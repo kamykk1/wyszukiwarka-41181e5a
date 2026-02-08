@@ -1,12 +1,98 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { TrendingDown, Store, Zap, Shield } from "lucide-react";
+import SearchBar from "@/components/SearchBar";
+import Navbar from "@/components/Navbar";
+import { stores } from "@/data/mockProducts";
+
+const features = [
+  { icon: TrendingDown, title: "Najniższe ceny", desc: "Porównujemy ceny z wielu sklepów" },
+  { icon: Store, title: "Wiele sklepów", desc: "Allegro, Amazon, AliExpress, Temu i więcej" },
+  { icon: Zap, title: "Błyskawicznie", desc: "Wyniki w ułamku sekundy" },
+  { icon: Shield, title: "Bezpiecznie", desc: "Zweryfikowane sklepy partnerskie" },
+];
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Navbar />
+
+      <section className="gradient-hero relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-10 h-72 w-72 rounded-full bg-accent blur-3xl" />
+          <div className="absolute bottom-10 right-20 h-96 w-96 rounded-full bg-accent/50 blur-3xl" />
+        </div>
+
+        <div className="container relative mx-auto px-4 py-24 text-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent">
+            <Zap className="h-3.5 w-3.5" />
+            Porównuj ceny z {stores.filter(s => s.enabled).length}+ sklepów
+          </div>
+
+          <h1 className="mb-4 text-5xl font-black tracking-tight text-gradient md:text-6xl">
+            Znajdź najlepszą cenę
+          </h1>
+          <p className="mx-auto mb-10 max-w-lg text-lg text-primary-foreground/60">
+            Przeszukuj oferty z Allegro, Amazon, AliExpress, Temu i innych popularnych sklepów w jednym miejscu.
+          </p>
+
+          <SearchBar large />
+
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-primary-foreground/40">
+            <span>Popularne:</span>
+            {["Słuchawki Bluetooth", "Smartwatch", "Plecak", "Ładowarka USB-C"].map(term => (
+              <a
+                key={term}
+                href={`/search?q=${encodeURIComponent(term)}`}
+                className="rounded-full border border-primary-foreground/10 px-3 py-1 transition-colors hover:border-accent/40 hover:text-accent"
+              >
+                {term}
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="container mx-auto px-4 py-16">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {features.map((f, i) => (
+            <div
+              key={f.title}
+              className="rounded-xl border bg-card p-6 shadow-product transition-all duration-300 hover:shadow-product-hover animate-fade-in"
+              style={{ animationDelay: `${i * 100}ms` }}
+            >
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
+                <f.icon className="h-5 w-5 text-accent" />
+              </div>
+              <h3 className="mb-1 font-bold text-foreground">{f.title}</h3>
+              <p className="text-sm text-muted-foreground">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="container mx-auto px-4 pb-16">
+        <h2 className="mb-6 text-center text-2xl font-bold text-foreground">Wspierane sklepy</h2>
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          {stores.map(store => (
+            <div
+              key={store.id}
+              className={`flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition-opacity ${
+                store.enabled ? "opacity-100" : "opacity-30"
+              }`}
+              style={{ borderColor: `${store.color}30`, color: store.color }}
+            >
+              <span className="text-lg">{store.logo}</span>
+              {store.name}
+              {!store.enabled && <span className="text-xs text-muted-foreground">(wkrótce)</span>}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <footer className="border-t bg-card py-8 text-center text-sm text-muted-foreground">
+        <div className="container mx-auto px-4">
+          © 2026 SmartPrice — Porównywarka cen. Wszystkie prawa zastrzeżone.
+        </div>
+      </footer>
     </div>
   );
 };
