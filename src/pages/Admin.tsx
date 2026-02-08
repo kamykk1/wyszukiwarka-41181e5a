@@ -1,0 +1,60 @@
+import { useState } from "react";
+import { Users, Store, Mail, Settings, ChevronRight } from "lucide-react";
+import Navbar from "@/components/Navbar";
+import AdminUsers from "@/components/admin/AdminUsers";
+import AdminStores from "@/components/admin/AdminStores";
+import AdminMailing from "@/components/admin/AdminMailing";
+
+const tabs = [
+  { id: "users", label: "Użytkownicy", icon: Users },
+  { id: "stores", label: "Sklepy", icon: Store },
+  { id: "mailing", label: "Mailing", icon: Mail },
+];
+
+const Admin = () => {
+  const [activeTab, setActiveTab] = useState("users");
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="container mx-auto px-4 py-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground">Panel Administracyjny</h1>
+          <p className="text-sm text-muted-foreground">Zarządzaj aplikacją SmartPrice</p>
+        </div>
+
+        <div className="flex flex-col gap-6 lg:flex-row">
+          {/* Sidebar */}
+          <div className="w-full lg:w-64 flex-shrink-0">
+            <div className="rounded-xl border bg-card p-2 shadow-product">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                    activeTab === tab.id
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <tab.icon className="h-4 w-4" />
+                  {tab.label}
+                  <ChevronRight className="ml-auto h-4 w-4" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 animate-fade-in">
+            {activeTab === "users" && <AdminUsers />}
+            {activeTab === "stores" && <AdminStores />}
+            {activeTab === "mailing" && <AdminMailing />}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Admin;
