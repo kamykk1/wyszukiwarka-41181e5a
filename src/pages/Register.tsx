@@ -1,19 +1,32 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { UserPlus, Mail, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Navbar from "@/components/Navbar";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { signUp } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: integrate with backend
+    setLoading(true);
+    const { error } = await signUp(email, password, name);
+    setLoading(false);
+    if (error) {
+      toast.error("Błąd rejestracji", { description: error.message });
+    } else {
+      toast.success("Konto utworzone! Możesz się zalogować.");
+      navigate("/");
+    }
   };
 
   return (
@@ -52,9 +65,9 @@ const Register = () => {
                   <Input id="password" type="password" placeholder="Min. 8 znaków" value={password} onChange={e => setPassword(e.target.value)} className="pl-10" minLength={8} required />
                 </div>
               </div>
-              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-semibold">
+              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-semibold" disabled={loading}>
                 <UserPlus className="mr-2 h-4 w-4" />
-                Zarejestruj się
+                {loading ? "Rejestracja..." : "Zarejestruj się"}
               </Button>
             </form>
 
