@@ -49,6 +49,34 @@ export const mockProducts: Product[] = [
 
 export const categories = ["Wszystkie", "Elektronika", "Akcesoria", "Dom", "Moda", "Sport", "Zdrowie"];
 
+/** Group products by name — returns all offers for the same product */
+export function getProductGroup(productId: string): Product[] {
+  const product = mockProducts.find(p => p.id === productId);
+  if (!product) return [];
+  return mockProducts
+    .filter(p => p.name === product.name)
+    .sort((a, b) => a.price - b.price);
+}
+
+/** Get unique product groups (one entry per product name) */
+export function getUniqueProducts(): { name: string; image: string; category: string; minPrice: number; currency: string; offersCount: number; representativeId: string }[] {
+  const groups = new Map<string, Product[]>();
+  for (const p of mockProducts) {
+    const existing = groups.get(p.name) || [];
+    existing.push(p);
+    groups.set(p.name, existing);
+  }
+  return Array.from(groups.entries()).map(([name, products]) => ({
+    name,
+    image: products[0].image,
+    category: products[0].category,
+    minPrice: Math.min(...products.map(p => p.price)),
+    currency: products[0].currency,
+    offersCount: products.length,
+    representativeId: products[0].id,
+  }));
+}
+
 export function searchProducts(query: string, storeFilter?: string[], sortBy: string = "price-asc"): Product[] {
   let results = mockProducts.filter(p =>
     p.name.toLowerCase().includes(query.toLowerCase())
