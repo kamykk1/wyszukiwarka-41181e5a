@@ -1,4 +1,5 @@
 import { Star, ExternalLink, TrendingDown } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Product, stores } from "@/data/mockProducts";
 
 interface ProductCardProps {
@@ -13,7 +14,8 @@ const ProductCard = ({ product, index }: ProductCardProps) => {
     : null;
 
   return (
-    <div
+    <Link
+      to={`/product/${product.id}`}
       className="group relative flex gap-4 rounded-xl border bg-card p-4 shadow-product transition-all duration-300 hover:shadow-product-hover hover:-translate-y-0.5 animate-fade-in"
       style={{ animationDelay: `${index * 60}ms` }}
     >
@@ -69,17 +71,12 @@ const ProductCard = ({ product, index }: ProductCardProps) => {
               </span>
             )}
           </div>
-          <a
-            href={product.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 rounded-lg bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            Kup <ExternalLink className="h-3 w-3" />
-          </a>
+          <span className="flex items-center gap-1 rounded-lg bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground">
+            Porównaj <ExternalLink className="h-3 w-3" />
+          </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 
