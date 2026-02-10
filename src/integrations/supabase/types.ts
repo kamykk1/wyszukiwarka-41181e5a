@@ -92,6 +92,42 @@ export type Database = {
         }
         Relationships: []
       }
+      stores: {
+        Row: {
+          api_key: string | null
+          api_secret: string | null
+          color: string
+          created_at: string
+          enabled: boolean
+          id: string
+          logo: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string | null
+          api_secret?: string | null
+          color?: string
+          created_at?: string
+          enabled?: boolean
+          id: string
+          logo?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string | null
+          api_secret?: string | null
+          color?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          logo?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -112,7 +148,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      stores_public: {
+        Row: {
+          color: string | null
+          enabled: boolean | null
+          id: string | null
+          logo: string | null
+          name: string | null
+        }
+        Insert: {
+          color?: string | null
+          enabled?: boolean | null
+          id?: string | null
+          logo?: string | null
+          name?: string | null
+        }
+        Update: {
+          color?: string | null
+          enabled?: boolean | null
+          id?: string | null
+          logo?: string | null
+          name?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
