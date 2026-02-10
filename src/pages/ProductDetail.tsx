@@ -4,6 +4,10 @@ import Navbar from "@/components/Navbar";
 import { getProductGroup, stores } from "@/data/mockProducts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import FavoriteButton from "@/components/FavoriteButton";
+import PriceAlertDialog from "@/components/PriceAlertDialog";
+import { useFavorites } from "@/hooks/useFavorites";
+import { usePriceAlerts } from "@/hooks/usePriceAlerts";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +31,9 @@ const ProductDetail = () => {
   const cheapest = offers[0].price;
   const mostExpensive = offers[offers.length - 1].price;
   const savings = mostExpensive - cheapest;
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const { createAlert, getAlertForProduct } = usePriceAlerts();
+  const existingAlert = getAlertForProduct(product.name);
 
   return (
     <div className="min-h-screen bg-background">
@@ -51,8 +58,20 @@ const ProductDetail = () => {
               />
             </div>
             <div className="rounded-xl border bg-card p-5 shadow-product">
-              <h1 className="text-xl font-bold text-foreground leading-tight">{product.name}</h1>
-              <Badge variant="secondary" className="mt-2">{product.category}</Badge>
+              <div className="flex items-start justify-between gap-2">
+                <h1 className="text-xl font-bold text-foreground leading-tight">{product.name}</h1>
+                <FavoriteButton isFavorite={isFavorite(product.name)} onClick={() => toggleFavorite(product.name)} />
+              </div>
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <Badge variant="secondary">{product.category}</Badge>
+                <PriceAlertDialog
+                  productName={product.name}
+                  currentPrice={cheapest}
+                  currency={product.currency}
+                  existingTargetPrice={existingAlert ? Number(existingAlert.target_price) : undefined}
+                  onSetAlert={createAlert}
+                />
+              </div>
 
               {savings > 0 && (
                 <div className="mt-4 flex items-center gap-2 rounded-lg bg-success/10 p-3 text-sm">
