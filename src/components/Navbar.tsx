@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, User, Shield, LogIn, LogOut, Menu } from "lucide-react";
+import { Search, User, Shield, LogIn, LogOut, Menu, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -19,12 +19,20 @@ const Navbar = () => {
         </Link>
       </Button>
       {user && (
-        <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
-          <Link to="/admin">
-            <Shield className="mr-1.5 h-4 w-4" />
-            Admin
-          </Link>
-        </Button>
+        <>
+          <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+            <Link to="/favorites">
+              <Heart className="mr-1.5 h-4 w-4" />
+              Ulubione
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+            <Link to="/admin">
+              <Shield className="mr-1.5 h-4 w-4" />
+              Admin
+            </Link>
+          </Button>
+        </>
       )}
       {user ? (
         <Button variant="outline" size="sm" onClick={() => { signOut(); setOpen(false); }}>
