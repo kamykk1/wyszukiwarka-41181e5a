@@ -1,30 +1,75 @@
-import { useState } from "react";
-import { Search, MoreHorizontal, Ban, CheckCircle, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, MoreHorizontal, Ban, CheckCircle, Shield, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-const mockUsers = [
-  { id: "1", name: "Jan Kowalski", email: "jan@example.com", role: "user", status: "active", joined: "2025-12-01" },
-  { id: "2", name: "Anna Nowak", email: "anna@example.com", role: "admin", status: "active", joined: "2025-11-15" },
-  { id: "3", name: "Piotr Wiśniewski", email: "piotr@example.com", role: "user", status: "blocked", joined: "2026-01-10" },
-  { id: "4", name: "Maria Zielińska", email: "maria@example.com", role: "user", status: "active", joined: "2026-01-22" },
-  { id: "5", name: "Tomasz Lewandowski", email: "tomasz@example.com", role: "user", status: "active", joined: "2026-02-01" },
-];
+interface AdminUser {
+  id: string;
+  email: string;
+  name: string | null;
+  roles: string[];
+  created_at: string;
+  last_sign_in_at: string | null;
+  banned: boolean;
+}
 
 const AdminUsers = () => {
   const [search, setSearch] = useState("");
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const filtered = mockUsers.filter(u =>
-    u.name.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
+  const fetchUsers = async () => {
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const res = await supabase.functions.invoke("admin-users", {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+
+    if (res.error) {
+      toast({ title: "Błąd", description: "Nie udało się pobrać użytkowników.", variant: "destructive" });
+    } else {
+      setUsers(res.data as AdminUser[]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchUsers(); }, []);
+
+  const filtered = users.filter(u =>
+    (u.name || "").toLowerCase().includes(search.toLowerCase()) ||
+    (u.email || "").toLowerCase().includes(search.toLowerCase())
   );
+
+  const toggleRole = async (userId: string, currentRoles: string[]) => {
+    const isAdmin = currentRoles.includes("admin");
+    if (isAdmin) {
+      await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
+    } else {
+      await supabase.from("user_roles").insert({ user_id: userId, role: "admin" as const });
+    }
+    toast({ title: isAdmin ? "Usunięto rolę admina" : "Nadano rolę admina" });
+    fetchUsers();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border bg-card shadow-product">
       <div className="flex items-center justify-between border-b p-4">
-        <h2 className="text-lg font-bold text-foreground">Użytkownicy ({mockUsers.length})</h2>
+        <h2 className="text-lg font-bold text-foreground">Użytkownicy ({users.length})</h2>
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Szukaj użytkowników..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
@@ -47,21 +92,27 @@ const AdminUsers = () => {
               <tr key={user.id} className="border-b last:border-0 transition-colors hover:bg-muted/50">
                 <td className="px-4 py-3">
                   <div>
-                    <p className="text-sm font-medium text-foreground">{user.name}</p>
+                    <p className="text-sm font-medium text-foreground">{user.name || "—"}</p>
                     <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <Badge variant={user.role === "admin" ? "default" : "secondary"} className={user.role === "admin" ? "bg-accent text-accent-foreground" : ""}>
-                    {user.role}
-                  </Badge>
+                  <div className="flex gap-1 flex-wrap">
+                    {user.roles.map(role => (
+                      <Badge key={role} variant={role === "admin" ? "default" : "secondary"} className={role === "admin" ? "bg-accent text-accent-foreground" : ""}>
+                        {role}
+                      </Badge>
+                    ))}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
-                  <Badge variant={user.status === "active" ? "outline" : "destructive"} className={user.status === "active" ? "border-success text-success" : ""}>
-                    {user.status === "active" ? "Aktywny" : "Zablokowany"}
+                  <Badge variant={user.banned ? "destructive" : "outline"} className={!user.banned ? "border-success text-success" : ""}>
+                    {user.banned ? "Zablokowany" : "Aktywny"}
                   </Badge>
                 </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{user.joined}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {new Date(user.created_at).toLocaleDateString("pl-PL")}
+                </td>
                 <td className="px-4 py-3 text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -70,9 +121,10 @@ const AdminUsers = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem><CheckCircle className="mr-2 h-4 w-4" /> Aktywuj</DropdownMenuItem>
-                      <DropdownMenuItem><Ban className="mr-2 h-4 w-4" /> Zablokuj</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Usuń</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => toggleRole(user.id, user.roles)}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        {user.roles.includes("admin") ? "Usuń admina" : "Nadaj admina"}
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </td>
