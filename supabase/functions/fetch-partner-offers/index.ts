@@ -243,9 +243,26 @@ Deno.serve(async (req) => {
           try {
             const normalized = normalizeOffer(raw, category, partner.id);
 
-            const { error: upsertErr } = await supabase
+            // Check if product already exists by external_id
+            const { data: existing } = await supabase
               .from("financial_products")
-              .upsert(normalized, { onConflict: "external_id" });
+              .select("id")
+              .eq("external_id", normalized.external_id)
+              .maybeSingle();
+
+            let upsertErr;
+            if (existing) {
+              const { error } = await supabase
+                .from("financial_products")
+                .update(normalized)
+                .eq("id", existing.id);
+              upsertErr = error;
+            } else {
+              const { error } = await supabase
+                .from("financial_products")
+                .insert(normalized);
+              upsertErr = error;
+            }
 
             if (upsertErr) {
               errors.push(`${normalized.name}: ${upsertErr.message}`);
