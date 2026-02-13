@@ -14,6 +14,8 @@ import Favorites from "./pages/Favorites";
 import Rewards from "./pages/Rewards";
 import Profile from "./pages/Profile";
 import Leaderboard from "./pages/Leaderboard";
+import Notifications from "./pages/Notifications";
+import MailingClick from "./pages/MailingClick";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +38,8 @@ const App = () => (
             <Route path="/rewards" element={<Rewards />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/mailing-click" element={<MailingClick />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

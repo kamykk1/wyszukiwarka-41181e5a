@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { UserPlus, Mail, Lock, User } from "lucide-react";
+import { UserPlus, Mail, Lock, User, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,9 +9,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 const Register = () => {
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [postalCode, setPostalCode] = useState("");
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -19,13 +23,20 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signUp(email, password, name);
+    const fullName = `${firstName} ${lastName}`.trim();
+    const { error } = await signUp(email, password, fullName, {
+      first_name: firstName,
+      last_name: lastName,
+      street,
+      city,
+      postal_code: postalCode,
+    });
     setLoading(false);
     if (error) {
       toast.error("Błąd rejestracji", { description: error.message });
     } else {
-      toast.success("Konto utworzone! Możesz się zalogować.");
-      navigate("/");
+      toast.success("Konto utworzone! Sprawdź email, aby potwierdzić rejestrację.");
+      navigate("/login");
     }
   };
 
@@ -44,11 +55,17 @@ const Register = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Imię</Label>
-                <div className="relative mt-1.5">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="name" placeholder="Jan Kowalski" value={name} onChange={e => setName(e.target.value)} className="pl-10" required />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="firstName">Imię</Label>
+                  <div className="relative mt-1.5">
+                    <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input id="firstName" placeholder="Jan" value={firstName} onChange={e => setFirstName(e.target.value)} className="pl-10" required />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Nazwisko</Label>
+                  <Input id="lastName" placeholder="Kowalski" value={lastName} onChange={e => setLastName(e.target.value)} className="mt-1.5" required />
                 </div>
               </div>
               <div>
@@ -65,6 +82,20 @@ const Register = () => {
                   <Input id="password" type="password" placeholder="Min. 8 znaków" value={password} onChange={e => setPassword(e.target.value)} className="pl-10" minLength={8} required />
                 </div>
               </div>
+
+              <div className="border-t pt-4">
+                <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4" /> Adres do wysyłki (opcjonalnie)
+                </p>
+                <div className="space-y-3">
+                  <Input placeholder="Ulica i numer" value={street} onChange={e => setStreet(e.target.value)} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input placeholder="Kod pocztowy" value={postalCode} onChange={e => setPostalCode(e.target.value)} />
+                    <Input placeholder="Miasto" value={city} onChange={e => setCity(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
               <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-semibold" disabled={loading}>
                 <UserPlus className="mr-2 h-4 w-4" />
                 {loading ? "Rejestracja..." : "Zarejestruj się"}

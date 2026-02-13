@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.send-notifications]
 verify_jwt = false
+
+[functions.send-mailing]
+verify_jwt = false

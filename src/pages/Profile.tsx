@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Bell, BellOff, Save, Loader2, History, MousePointerClick, ShoppingBag, ArrowDownCircle, ArrowUpCircle, Settings2 } from "lucide-react";
+import { User, Mail, Bell, BellOff, Save, Loader2, History, MousePointerClick, ShoppingBag, ArrowDownCircle, ArrowUpCircle, Settings2, MapPin } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRewards } from "@/hooks/useRewards";
@@ -23,7 +23,11 @@ const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { userPoints, transactions, loading } = useRewards();
-  const [profileName, setProfileName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [postalCode, setPostalCode] = useState("");
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pointsThreshold, setPointsThreshold] = useState(500);
   const [saving, setSaving] = useState(false);
@@ -35,11 +39,15 @@ const Profile = () => {
       setProfileLoading(true);
       const { data } = await supabase
         .from("profiles")
-        .select("name, email_notifications, points_threshold")
+        .select("name, first_name, last_name, street, city, postal_code, email_notifications, points_threshold")
         .eq("user_id", user.id)
         .maybeSingle();
       if (data) {
-        setProfileName(data.name || "");
+        setFirstName(data.first_name || "");
+        setLastName(data.last_name || "");
+        setStreet(data.street || "");
+        setCity(data.city || "");
+        setPostalCode(data.postal_code || "");
         setEmailNotifications(data.email_notifications ?? true);
         setPointsThreshold(data.points_threshold ?? 500);
       }
@@ -54,7 +62,12 @@ const Profile = () => {
     const { error } = await supabase
       .from("profiles")
       .update({
-        name: profileName,
+        name: `${firstName} ${lastName}`.trim(),
+        first_name: firstName,
+        last_name: lastName,
+        street,
+        city,
+        postal_code: postalCode,
         email_notifications: emailNotifications,
         points_threshold: pointsThreshold,
       })
@@ -95,10 +108,8 @@ const Profile = () => {
     );
   }
 
-  // Stats from transactions
   const clickPoints = transactions.filter(t => t.type === "click").reduce((sum, t) => sum + t.amount, 0);
   const purchasePoints = transactions.filter(t => t.type === "purchase").reduce((sum, t) => sum + t.amount, 0);
-  const _redeemedPoints = Math.abs(transactions.filter(t => t.type === "redeemed").reduce((sum, t) => sum + t.amount, 0));
 
   return (
     <div className="min-h-screen bg-background">
@@ -131,58 +142,62 @@ const Profile = () => {
         {/* Account settings */}
         <div className="rounded-xl border bg-card p-6 shadow-product mb-8">
           <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <Settings2 className="h-5 w-5" /> Ustawienia konta
+            <Settings2 className="h-5 w-5" /> Dane osobowe
           </h2>
 
           <div className="space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+              <Label className="text-sm font-medium">Email</Label>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Mail className="h-4 w-4" />
                 {user.email}
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="name" className="text-sm font-medium">Nazwa wyświetlana</Label>
-              <Input
-                id="name"
-                value={profileName}
-                onChange={(e) => setProfileName(e.target.value)}
-                placeholder="Twoja nazwa"
-                className="max-w-sm"
-              />
-            </div>
-
-            <div className="flex items-center justify-between max-w-sm">
-              <div className="space-y-0.5">
-                <Label className="text-sm font-medium flex items-center gap-1.5">
-                  {emailNotifications ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
-                  Powiadomienia email
-                </Label>
-                <p className="text-xs text-muted-foreground">Otrzymuj info o nowych nagrodach i progach punktowych</p>
-              </div>
-              <Switch
-                checked={emailNotifications}
-                onCheckedChange={setEmailNotifications}
-              />
-            </div>
-
-            {emailNotifications && (
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="threshold" className="text-sm font-medium">Próg punktowy do powiadomienia</Label>
-                <Input
-                  id="threshold"
-                  type="number"
-                  min={10}
-                  max={100000}
-                  value={pointsThreshold}
-                  onChange={(e) => setPointsThreshold(Number(e.target.value))}
-                  className="max-w-[200px]"
-                />
-                <p className="text-xs text-muted-foreground">Otrzymasz email gdy osiągniesz ten próg punktów</p>
+                <Label htmlFor="firstName">Imię</Label>
+                <Input id="firstName" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Jan" className="max-w-sm" />
               </div>
-            )}
+              <div className="space-y-1.5">
+                <Label htmlFor="lastName">Nazwisko</Label>
+                <Input id="lastName" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Kowalski" className="max-w-sm" />
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-1.5">
+                <MapPin className="h-4 w-4" /> Adres do wysyłki
+              </p>
+              <div className="space-y-3 max-w-sm">
+                <Input placeholder="Ulica i numer" value={street} onChange={e => setStreet(e.target.value)} />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input placeholder="Kod pocztowy" value={postalCode} onChange={e => setPostalCode(e.target.value)} />
+                  <Input placeholder="Miasto" value={city} onChange={e => setCity(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between max-w-sm">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    {emailNotifications ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                    Powiadomienia email
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Otrzymuj info o nowych nagrodach i progach punktowych</p>
+                </div>
+                <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
+              </div>
+
+              {emailNotifications && (
+                <div className="space-y-1.5 mt-3">
+                  <Label htmlFor="threshold" className="text-sm font-medium">Próg punktowy do powiadomienia</Label>
+                  <Input id="threshold" type="number" min={10} max={100000} value={pointsThreshold} onChange={e => setPointsThreshold(Number(e.target.value))} className="max-w-[200px]" />
+                  <p className="text-xs text-muted-foreground">Otrzymasz email gdy osiągniesz ten próg punktów</p>
+                </div>
+              )}
+            </div>
 
             <Button onClick={handleSave} disabled={saving} className="bg-accent text-accent-foreground hover:bg-accent/90">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}

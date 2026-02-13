@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift } from "lucide-react";
+import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift, ShoppingBag } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminStores from "@/components/admin/AdminStores";
 import AdminMailing from "@/components/admin/AdminMailing";
 import AdminRewards from "@/components/admin/AdminRewards";
+import AdminRedemptions from "@/components/admin/AdminRedemptions";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
@@ -13,6 +14,7 @@ const tabs = [
   { id: "users", label: "Użytkownicy", icon: Users },
   { id: "stores", label: "Sklepy", icon: Store },
   { id: "rewards", label: "Nagrody", icon: Gift },
+  { id: "redemptions", label: "Zamówienia", icon: ShoppingBag },
   { id: "mailing", label: "Mailing", icon: Mail },
 ];
 
@@ -81,6 +83,7 @@ const Admin = () => {
             {activeTab === "users" && <AdminUsers />}
             {activeTab === "stores" && <AdminStores />}
             {activeTab === "rewards" && <AdminRewards />}
+            {activeTab === "redemptions" && <AdminRedemptions />}
             {activeTab === "mailing" && <AdminMailing />}
           </div>
         </div>
