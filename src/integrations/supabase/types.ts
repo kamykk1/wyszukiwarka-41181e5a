@@ -210,18 +210,24 @@ export type Database = {
       }
       reward_settings: {
         Row: {
+          click_points: number
           id: string
           point_value_pln: number
+          purchase_points: number
           updated_at: string
         }
         Insert: {
+          click_points?: number
           id?: string
           point_value_pln?: number
+          purchase_points?: number
           updated_at?: string
         }
         Update: {
+          click_points?: number
           id?: string
           point_value_pln?: number
+          purchase_points?: number
           updated_at?: string
         }
         Relationships: []
@@ -342,6 +348,16 @@ export type Database = {
       }
     }
     Views: {
+      leaderboard: {
+        Row: {
+          avatar_url: string | null
+          balance: number | null
+          name: string | null
+          rank: number | null
+          total_earned: number | null
+        }
+        Relationships: []
+      }
       stores_public: {
         Row: {
           color: string | null
