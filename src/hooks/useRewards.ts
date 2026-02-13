@@ -92,7 +92,6 @@ export const useRewards = () => {
     }
 
     const { data, error } = await supabase.rpc("redeem_reward", {
-      _user_id: user.id,
       _reward_id: reward.id,
     });
 
