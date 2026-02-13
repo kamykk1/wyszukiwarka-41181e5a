@@ -1,73 +1,145 @@
-# Welcome to your Lovable project
+# SmartPrice — Porównywarka cen z systemem lojalnościowym
 
-## Project info
+## Opis projektu
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+SmartPrice to aplikacja webowa do porównywania cen produktów z różnych sklepów internetowych, wzbogacona o system punktów lojalnościowych, nagrody, mailing oraz panel administracyjny.
 
-## How can I edit this code?
+## Wymagania
 
-There are several ways of editing your application.
+- **Node.js** 18+ (zalecane 20+)
+- **npm** lub **bun**
+- **Konto Supabase** (lub Lovable Cloud)
 
-**Use Lovable**
+## Instalacja lokalna
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+```bash
+# 1. Sklonuj repozytorium
+git clone <URL_REPOZYTORIUM>
+cd smartprice
 
-Changes made via Lovable will be committed automatically to this repo.
+# 2. Zainstaluj zależności
+npm install
 
-**Use your preferred IDE**
+# 3. Skonfiguruj zmienne środowiskowe
+#    Utwórz plik .env w katalogu głównym:
+cp .env.example .env
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# 4. Uzupełnij .env:
+#    VITE_SUPABASE_URL=https://<twoj-projekt>.supabase.co
+#    VITE_SUPABASE_PUBLISHABLE_KEY=<twoj-anon-key>
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 5. Uruchom serwer deweloperski
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Aplikacja będzie dostępna pod adresem `http://localhost:5173`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Konfiguracja Supabase
 
-**Use GitHub Codespaces**
+### 1. Utwórz projekt Supabase
+Zarejestruj się na [supabase.com](https://supabase.com) i utwórz nowy projekt.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### 2. Uruchom migracje
+Wszystkie migracje SQL znajdują się w katalogu `supabase/migrations/`. Wykonaj je po kolei w edytorze SQL w panelu Supabase.
 
-## What technologies are used for this project?
+### 3. Skonfiguruj sekrety Edge Functions
+W ustawieniach projektu Supabase dodaj następujące sekrety:
+- `RESEND_API_KEY` — klucz API z [resend.com](https://resend.com) (do wysyłki emaili)
 
-This project is built with:
+### 4. Wdróż Edge Functions
+```bash
+# Zainstaluj Supabase CLI
+npm install -g supabase
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+# Zaloguj się
+supabase login
 
-## How can I deploy this project?
+# Połącz z projektem
+supabase link --project-ref <twoj-project-id>
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+# Wdróż funkcje
+supabase functions deploy send-mailing
+supabase functions deploy send-notifications
+supabase functions deploy admin-users
+supabase functions deploy confirm-purchase
+```
 
-## Can I connect a custom domain to my Lovable project?
+## Struktura projektu
 
-Yes, you can!
+```
+src/
+├── components/          # Komponenty React
+│   ├── admin/           # Panel administracyjny
+│   │   ├── AdminUsers.tsx
+│   │   ├── AdminStores.tsx
+│   │   ├── AdminRewards.tsx
+│   │   ├── AdminRedemptions.tsx
+│   │   └── AdminMailing.tsx
+│   ├── ui/              # Komponenty shadcn/ui
+│   └── ...
+├── contexts/            # Context API (AuthContext)
+├── hooks/               # Custom hooks
+├── pages/               # Strony aplikacji
+├── integrations/        # Konfiguracja Supabase
+└── data/                # Dane mockowe
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+supabase/
+├── functions/           # Edge Functions
+│   ├── admin-users/     # Zarządzanie użytkownikami
+│   ├── confirm-purchase/# API potwierdzenia zakupu
+│   ├── send-mailing/    # Wysyłka mailingu
+│   └── send-notifications/ # Powiadomienia
+├── migrations/          # Migracje SQL
+└── config.toml          # Konfiguracja
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Funkcjonalności
+
+### Dla użytkowników
+- 🔍 Porównywanie cen produktów
+- ❤️ Ulubione produkty
+- 🔔 Alerty cenowe
+- 🎁 System punktów lojalnościowych
+- 🏆 Ranking użytkowników
+- 📬 Powiadomienia email
+
+### Panel administracyjny (`/admin`)
+- 👥 Zarządzanie użytkownikami (edycja danych, korekta punktów)
+- 🏪 Konfiguracja sklepów i kluczy API
+- 🎁 Zarządzanie nagrodami
+- 📦 Obsługa zamówień (statusy: oczekuje, opłacone, zaakceptowane, odrzucone)
+- ✉️ System mailingowy HTML z podglądem i statystykami
+
+### API dla sklepów
+Sklepy mogą automatycznie przyznawać punkty za zakupy:
+
+```bash
+curl -X POST https://<supabase-url>/functions/v1/confirm-purchase \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: <klucz-api-sklepu>" \
+  -d '{
+    "user_email": "user@example.com",
+    "product_name": "Nazwa produktu",
+    "store_name": "Nazwa sklepu"
+  }'
+```
+
+## Technologie
+
+- **Frontend**: React 18, TypeScript, Vite
+- **UI**: Tailwind CSS, shadcn/ui
+- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
+- **Email**: Resend API
+- **State**: TanStack Query, React Context
+
+## Build produkcyjny
+
+```bash
+npm run build
+```
+
+Pliki wyjściowe znajdą się w katalogu `dist/`.
+
+## Licencja
+
+Projekt prywatny. Wszelkie prawa zastrzeżone.

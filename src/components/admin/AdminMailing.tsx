@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Send, Users, FileText, Loader2, Coins, Code, Eye } from "lucide-react";
+import { Send, Users, FileText, Loader2, Coins, Code, Eye, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,8 @@ interface Campaign {
   points_reward: number;
   sent_at: string | null;
   created_at: string;
+  clicks_count?: number;
+  total_points_awarded?: number;
 }
 
 const DEFAULT_TEMPLATE = `<div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333;">
@@ -53,7 +55,33 @@ const AdminMailing = () => {
       .select("id, subject, audience, points_reward, sent_at, created_at")
       .order("created_at", { ascending: false })
       .limit(20);
-    setCampaigns((data as Campaign[]) || []);
+
+    const campaignList = (data || []) as Campaign[];
+
+    // Fetch click stats for each campaign
+    if (campaignList.length > 0) {
+      const ids = campaignList.map(c => c.id);
+      const { data: clicks } = await supabase
+        .from("mailing_clicks")
+        .select("campaign_id, points_awarded")
+        .in("campaign_id", ids);
+
+      const statsMap = new Map<string, { count: number; points: number }>();
+      (clicks || []).forEach(c => {
+        const existing = statsMap.get(c.campaign_id) || { count: 0, points: 0 };
+        existing.count++;
+        existing.points += c.points_awarded;
+        statsMap.set(c.campaign_id, existing);
+      });
+
+      campaignList.forEach(c => {
+        const stats = statsMap.get(c.id);
+        c.clicks_count = stats?.count || 0;
+        c.total_points_awarded = stats?.points || 0;
+      });
+    }
+
+    setCampaigns(campaignList);
     setLoadingCampaigns(false);
   };
 
@@ -200,10 +228,12 @@ const AdminMailing = () => {
         </form>
       </div>
 
-      {/* Campaign history */}
+      {/* Campaign history with stats */}
       <div className="rounded-xl border bg-card shadow-product">
         <div className="border-b p-4">
-          <h2 className="text-lg font-bold text-foreground">Historia kampanii</h2>
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" /> Historia kampanii
+          </h2>
         </div>
         {loadingCampaigns ? (
           <div className="flex items-center justify-center py-8">
@@ -218,7 +248,9 @@ const AdminMailing = () => {
                 <tr className="border-b text-left text-xs font-medium text-muted-foreground">
                   <th className="px-4 py-3">Temat</th>
                   <th className="px-4 py-3">Odbiorcy</th>
-                  <th className="px-4 py-3">Punkty</th>
+                  <th className="px-4 py-3">Punkty/klik</th>
+                  <th className="px-4 py-3">Kliknięcia</th>
+                  <th className="px-4 py-3">Przyznane pkt</th>
                   <th className="px-4 py-3">Data</th>
                 </tr>
               </thead>
@@ -228,6 +260,8 @@ const AdminMailing = () => {
                     <td className="px-4 py-3 text-sm font-medium text-foreground">{c.subject}</td>
                     <td className="px-4 py-3"><Badge variant="secondary">{c.audience}</Badge></td>
                     <td className="px-4 py-3 text-sm text-foreground">{c.points_reward > 0 ? `${c.points_reward} pkt` : "—"}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-foreground">{c.clicks_count || 0}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-accent">{c.total_points_awarded || 0} pkt</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {c.sent_at ? new Date(c.sent_at).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
                     </td>
