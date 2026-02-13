@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Send, Users, FileText, Loader2, Coins } from "lucide-react";
+import { Send, Users, FileText, Loader2, Coins, Code, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,15 +19,32 @@ interface Campaign {
   created_at: string;
 }
 
+const DEFAULT_TEMPLATE = `<div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333;">
+  <div style="background:#ff6b35;padding:20px;text-align:center;">
+    <h1 style="color:white;margin:0;">SmartPrice</h1>
+  </div>
+  <div style="padding:24px;background:#fff;">
+    <h2 style="color:#1a1a2e;">{{subject}}</h2>
+    <p>Cześć {{name}}!</p>
+    <div>{{message}}</div>
+    {{click_button}}
+  </div>
+  <div style="padding:16px;text-align:center;color:#999;font-size:12px;border-top:1px solid #eee;">
+    SmartPrice — porównywarka cen
+  </div>
+</div>`;
+
 const AdminMailing = () => {
   const { toast } = useToast();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [audience, setAudience] = useState("all");
   const [pointsReward, setPointsReward] = useState(0);
+  const [htmlTemplate, setHtmlTemplate] = useState(DEFAULT_TEMPLATE);
   const [sending, setSending] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
+  const [previewMode, setPreviewMode] = useState<"edit" | "preview">("edit");
 
   const fetchCampaigns = async () => {
     setLoadingCampaigns(true);
@@ -41,6 +59,16 @@ const AdminMailing = () => {
 
   useEffect(() => { fetchCampaigns(); }, []);
 
+  const getPreviewHtml = () => {
+    return htmlTemplate
+      .replace(/\{\{subject\}\}/g, subject || "Temat wiadomości")
+      .replace(/\{\{name\}\}/g, "Jan")
+      .replace(/\{\{message\}\}/g, (message || "Treść wiadomości...").replace(/\n/g, "<br/>"))
+      .replace(/\{\{click_button\}\}/g, pointsReward > 0
+        ? `<p><a href="#" style="display:inline-block;padding:10px 20px;background:#ff6b35;color:white;text-decoration:none;border-radius:6px;">Odbierz ${pointsReward} punktów →</a></p>`
+        : "");
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim() || !message.trim()) return;
@@ -49,7 +77,6 @@ const AdminMailing = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setSending(false); return; }
 
-    // Save campaign
     const { data: campaign, error: insertError } = await supabase
       .from("mailing_campaigns")
       .insert({
@@ -69,10 +96,16 @@ const AdminMailing = () => {
       return;
     }
 
-    // Invoke send-mailing edge function
     const res = await supabase.functions.invoke("send-mailing", {
       headers: { Authorization: `Bearer ${session.access_token}` },
-      body: { campaign_id: campaign.id, subject: subject.trim(), message: message.trim(), audience, points_reward: pointsReward },
+      body: {
+        campaign_id: campaign.id,
+        subject: subject.trim(),
+        message: message.trim(),
+        audience,
+        points_reward: pointsReward,
+        html_template: htmlTemplate,
+      },
     });
 
     setSending(false);
@@ -92,23 +125,31 @@ const AdminMailing = () => {
       <div className="rounded-xl border bg-card p-6 shadow-product">
         <h2 className="mb-1 text-lg font-bold text-foreground">Wyślij Mailing</h2>
         <p className="mb-6 text-sm text-muted-foreground">
-          Wyślij wiadomość email do wybranej grupy użytkowników. Ustaw punkty za kliknięcie w link.
+          Wyślij wiadomość HTML do wybranej grupy użytkowników. Użyj zmiennych: {"{{subject}}"}, {"{{name}}"}, {"{{message}}"}, {"{{click_button}}"}.
         </p>
 
         <form onSubmit={handleSend} className="space-y-4">
-          <div>
-            <Label>Odbiorcy</Label>
-            <Select value={audience} onValueChange={setAudience}>
-              <SelectTrigger className="mt-1.5">
-                <Users className="mr-2 h-4 w-4" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Wszyscy użytkownicy</SelectItem>
-                <SelectItem value="active">Tylko aktywni</SelectItem>
-                <SelectItem value="new">Nowi (ostatnie 30 dni)</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Odbiorcy</Label>
+              <Select value={audience} onValueChange={setAudience}>
+                <SelectTrigger className="mt-1.5">
+                  <Users className="mr-2 h-4 w-4" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Wszyscy użytkownicy</SelectItem>
+                  <SelectItem value="active">Tylko aktywni</SelectItem>
+                  <SelectItem value="new">Nowi (ostatnie 30 dni)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="pointsReward" className="flex items-center gap-1.5">
+                <Coins className="h-4 w-4" /> Punkty za kliknięcie
+              </Label>
+              <Input id="pointsReward" type="number" min={0} max={1000} value={pointsReward} onChange={e => setPointsReward(parseInt(e.target.value) || 0)} className="mt-1.5" />
+            </div>
           </div>
 
           <div>
@@ -117,22 +158,39 @@ const AdminMailing = () => {
           </div>
 
           <div>
-            <Label htmlFor="message">Treść</Label>
-            <Textarea id="message" placeholder="Napisz treść wiadomości..." value={message} onChange={e => setMessage(e.target.value)} className="mt-1.5 min-h-[200px]" required />
+            <Label htmlFor="message">Treść (tekst)</Label>
+            <Textarea id="message" placeholder="Napisz treść wiadomości..." value={message} onChange={e => setMessage(e.target.value)} className="mt-1.5 min-h-[100px]" required />
           </div>
 
           <div>
-            <Label htmlFor="pointsReward" className="flex items-center gap-1.5">
-              <Coins className="h-4 w-4" /> Punkty za kliknięcie w link
+            <Label className="flex items-center gap-1.5 mb-1.5">
+              <Code className="h-4 w-4" /> Szablon HTML
             </Label>
-            <Input id="pointsReward" type="number" min={0} max={1000} value={pointsReward} onChange={e => setPointsReward(parseInt(e.target.value) || 0)} className="mt-1.5 max-w-[200px]" />
-            <p className="text-xs text-muted-foreground mt-1">Użytkownicy otrzymają tyle punktów po kliknięciu w link w mailu (0 = brak punktów)</p>
+            <Tabs value={previewMode} onValueChange={v => setPreviewMode(v as "edit" | "preview")}>
+              <TabsList className="mb-2">
+                <TabsTrigger value="edit"><Code className="mr-1 h-3 w-3" /> Edytor</TabsTrigger>
+                <TabsTrigger value="preview"><Eye className="mr-1 h-3 w-3" /> Podgląd</TabsTrigger>
+              </TabsList>
+              <TabsContent value="edit">
+                <Textarea
+                  value={htmlTemplate}
+                  onChange={e => setHtmlTemplate(e.target.value)}
+                  className="min-h-[250px] font-mono text-xs"
+                  placeholder="HTML template..."
+                />
+              </TabsContent>
+              <TabsContent value="preview">
+                <div className="rounded-lg border bg-background p-4 min-h-[250px]">
+                  <div dangerouslySetInnerHTML={{ __html: getPreviewHtml() }} />
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
           <div className="flex items-center justify-between border-t pt-4">
             <p className="text-xs text-muted-foreground">
               <FileText className="mr-1 inline h-3 w-3" />
-              Wiadomość zostanie wysłana do wybranych odbiorców
+              Wiadomość zostanie wysłana w formacie HTML
             </p>
             <Button type="submit" disabled={sending} className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold">
               {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}

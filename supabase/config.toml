@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.send-mailing]
 verify_jwt = false
+
+[functions.confirm-purchase]
+verify_jwt = false

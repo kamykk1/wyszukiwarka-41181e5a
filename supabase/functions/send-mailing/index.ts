@@ -35,7 +35,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
@@ -61,9 +60,8 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const { campaign_id, subject, message, audience, points_reward } = await req.json();
+    const { campaign_id, subject, message, audience, points_reward, html_template } = await req.json();
 
-    // Get users with email notifications enabled
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, name, first_name")
@@ -77,26 +75,27 @@ Deno.serve(async (req) => {
       ? "https://wyszukiwarka.lovable.app"
       : supabaseUrl;
 
+    // Default template fallback
+    const template = html_template || `<h2>{{subject}}</h2><p>Cześć {{name}}!</p><div>{{message}}</div>{{click_button}}<hr/><p style="color:#999;font-size:12px;">SmartPrice — porównywarka cen</p>`;
+
     let sent = 0;
     for (const profile of profiles) {
       const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
       if (!authUser?.user?.email) continue;
 
-      const clickLink = points_reward > 0
+      const userName = profile.first_name || profile.name || "";
+      const clickButton = points_reward > 0
         ? `<p><a href="${appUrl}/mailing-click?campaign=${campaign_id}" style="display:inline-block;padding:10px 20px;background:#ff6b35;color:white;text-decoration:none;border-radius:6px;">Odbierz ${points_reward} punktów →</a></p>`
         : "";
 
-      await sendEmail(
-        authUser.user.email,
-        subject,
-        `<h2>${subject}</h2>
-         <p>Cześć${profile.first_name ? ` ${profile.first_name}` : (profile.name ? ` ${profile.name}` : "")}!</p>
-         <div>${message.replace(/\n/g, "<br/>")}</div>
-         ${clickLink}
-         <hr/><p style="color:#999;font-size:12px;">SmartPrice — porównywarka cen</p>`
-      );
+      const finalHtml = template
+        .replace(/\{\{subject\}\}/g, subject)
+        .replace(/\{\{name\}\}/g, userName)
+        .replace(/\{\{message\}\}/g, message.replace(/\n/g, "<br/>"))
+        .replace(/\{\{click_button\}\}/g, clickButton);
 
-      // Log notification
+      await sendEmail(authUser.user.email, subject, finalHtml);
+
       await supabase.from("notification_log").insert({
         user_id: profile.user_id,
         type: "mailing",

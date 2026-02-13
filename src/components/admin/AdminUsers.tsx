@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, MoreHorizontal, Shield, Loader2, Plus, Minus } from "lucide-react";
+import { Search, MoreHorizontal, Shield, Loader2, Plus, Minus, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,15 @@ interface AdminUser {
   banned: boolean;
 }
 
+interface UserProfile {
+  first_name: string;
+  last_name: string;
+  street: string;
+  city: string;
+  postal_code: string;
+  country: string;
+}
+
 const AdminUsers = () => {
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -32,6 +41,12 @@ const AdminUsers = () => {
   const [pointsAmount, setPointsAmount] = useState(0);
   const [pointsDesc, setPointsDesc] = useState("");
   const [pointsLoading, setPointsLoading] = useState(false);
+
+  // Edit dialog
+  const [editOpen, setEditOpen] = useState(false);
+  const [editUser, setEditUser] = useState<AdminUser | null>(null);
+  const [editProfile, setEditProfile] = useState<UserProfile>({ first_name: "", last_name: "", street: "", city: "", postal_code: "", country: "Polska" });
+  const [editLoading, setEditLoading] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -78,7 +93,7 @@ const AdminUsers = () => {
   const handleAddPoints = async () => {
     if (!pointsUser || pointsAmount === 0) return;
     setPointsLoading(true);
-    const { data, error } = await supabase.rpc("admin_add_points", {
+    const { error } = await supabase.rpc("admin_add_points", {
       _user_id: pointsUser.id,
       _amount: pointsAmount,
       _description: pointsDesc || `Korekta przez admina`,
@@ -90,6 +105,44 @@ const AdminUsers = () => {
     } else {
       toast({ title: "Punkty zaktualizowane", description: `${pointsAmount > 0 ? "+" : ""}${pointsAmount} pkt dla ${pointsUser.name || pointsUser.email}` });
       setPointsOpen(false);
+    }
+  };
+
+  const openEditDialog = async (user: AdminUser) => {
+    setEditUser(user);
+    setEditLoading(true);
+    setEditOpen(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("first_name, last_name, street, city, postal_code, country")
+      .eq("user_id", user.id)
+      .single();
+    setEditProfile({
+      first_name: data?.first_name || "",
+      last_name: data?.last_name || "",
+      street: data?.street || "",
+      city: data?.city || "",
+      postal_code: data?.postal_code || "",
+      country: data?.country || "Polska",
+    });
+    setEditLoading(false);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editUser) return;
+    setEditLoading(true);
+    const fullName = `${editProfile.first_name} ${editProfile.last_name}`.trim();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ ...editProfile, name: fullName || null })
+      .eq("user_id", editUser.id);
+    setEditLoading(false);
+    if (error) {
+      toast({ title: "Błąd", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Profil zaktualizowany" });
+      setEditOpen(false);
+      fetchUsers();
     }
   };
 
@@ -157,6 +210,10 @@ const AdminUsers = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditDialog(user)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edytuj dane
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => toggleRole(user.id, user.roles)}>
                           <Shield className="mr-2 h-4 w-4" />
                           {user.roles.includes("admin") ? "Usuń admina" : "Nadaj admina"}
@@ -174,6 +231,54 @@ const AdminUsers = () => {
           </table>
         </div>
       </div>
+
+      {/* Edit user dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edytuj dane użytkownika</DialogTitle>
+          </DialogHeader>
+          {editLoading && !editUser ? (
+            <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+          ) : (
+            <div className="space-y-3 mt-2">
+              <p className="text-sm text-muted-foreground">{editUser?.email}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Imię</Label>
+                  <Input value={editProfile.first_name} onChange={e => setEditProfile(p => ({ ...p, first_name: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Nazwisko</Label>
+                  <Input value={editProfile.last_name} onChange={e => setEditProfile(p => ({ ...p, last_name: e.target.value }))} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Ulica</Label>
+                <Input value={editProfile.street} onChange={e => setEditProfile(p => ({ ...p, street: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Kod pocztowy</Label>
+                  <Input value={editProfile.postal_code} onChange={e => setEditProfile(p => ({ ...p, postal_code: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Miasto</Label>
+                  <Input value={editProfile.city} onChange={e => setEditProfile(p => ({ ...p, city: e.target.value }))} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Kraj</Label>
+                <Input value={editProfile.country} onChange={e => setEditProfile(p => ({ ...p, country: e.target.value }))} />
+              </div>
+              <Button onClick={handleSaveProfile} disabled={editLoading} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                {editLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pencil className="mr-2 h-4 w-4" />}
+                Zapisz zmiany
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Add points dialog */}
       <Dialog open={pointsOpen} onOpenChange={setPointsOpen}>
