@@ -29,6 +29,7 @@ const Profile = () => {
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
+  const [phone, setPhone] = useState("");
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pointsThreshold, setPointsThreshold] = useState(500);
   const [saving, setSaving] = useState(false);
@@ -40,7 +41,7 @@ const Profile = () => {
       setProfileLoading(true);
       const { data } = await supabase
         .from("profiles")
-        .select("name, first_name, last_name, street, city, postal_code, email_notifications, points_threshold")
+        .select("name, first_name, last_name, street, city, postal_code, phone, email_notifications, points_threshold")
         .eq("user_id", user.id)
         .maybeSingle();
       if (data) {
@@ -49,6 +50,7 @@ const Profile = () => {
         setStreet(data.street || "");
         setCity(data.city || "");
         setPostalCode(data.postal_code || "");
+        setPhone(data.phone || "");
         setEmailNotifications(data.email_notifications ?? true);
         setPointsThreshold(data.points_threshold ?? 500);
       }
@@ -69,6 +71,7 @@ const Profile = () => {
         street,
         city,
         postal_code: postalCode,
+        phone: phone || null,
         email_notifications: emailNotifications,
         points_threshold: pointsThreshold,
       })
@@ -184,6 +187,11 @@ const Profile = () => {
                 <Label htmlFor="lastName">Nazwisko</Label>
                 <Input id="lastName" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Kowalski" className="max-w-sm" />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="phone">Numer telefonu</Label>
+              <Input id="phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+48 123 456 789" className="max-w-sm" />
             </div>
 
             <div className="border-t pt-4">

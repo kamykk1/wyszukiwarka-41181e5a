@@ -16,6 +16,7 @@ const Register = () => {
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ const Register = () => {
       street,
       city,
       postal_code: postalCode,
+      phone,
     });
     setLoading(false);
     if (error) {
@@ -80,6 +82,13 @@ const Register = () => {
                 <div className="relative mt-1.5">
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input id="password" type="password" placeholder="Min. 8 znaków" value={password} onChange={e => setPassword(e.target.value)} className="pl-10" minLength={8} required />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="phone">Numer telefonu (opcjonalnie)</Label>
+                <div className="relative mt-1.5">
+                  <Input id="phone" type="tel" placeholder="+48 123 456 789" value={phone} onChange={e => setPhone(e.target.value)} />
                 </div>
               </div>
 

@@ -23,6 +23,7 @@ interface AdminUser {
 interface UserProfile {
   first_name: string;
   last_name: string;
+  phone: string;
   street: string;
   city: string;
   postal_code: string;
@@ -45,7 +46,7 @@ const AdminUsers = () => {
   // Edit dialog
   const [editOpen, setEditOpen] = useState(false);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
-  const [editProfile, setEditProfile] = useState<UserProfile>({ first_name: "", last_name: "", street: "", city: "", postal_code: "", country: "Polska" });
+  const [editProfile, setEditProfile] = useState<UserProfile>({ first_name: "", last_name: "", phone: "", street: "", city: "", postal_code: "", country: "Polska" });
   const [editLoading, setEditLoading] = useState(false);
 
   const fetchUsers = async () => {
@@ -114,12 +115,13 @@ const AdminUsers = () => {
     setEditOpen(true);
     const { data } = await supabase
       .from("profiles")
-      .select("first_name, last_name, street, city, postal_code, country")
+      .select("first_name, last_name, phone, street, city, postal_code, country")
       .eq("user_id", user.id)
       .single();
     setEditProfile({
       first_name: data?.first_name || "",
       last_name: data?.last_name || "",
+      phone: data?.phone || "",
       street: data?.street || "",
       city: data?.city || "",
       postal_code: data?.postal_code || "",
@@ -252,6 +254,10 @@ const AdminUsers = () => {
                   <Label>Nazwisko</Label>
                   <Input value={editProfile.last_name} onChange={e => setEditProfile(p => ({ ...p, last_name: e.target.value }))} />
                 </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Telefon</Label>
+                <Input type="tel" value={editProfile.phone} onChange={e => setEditProfile(p => ({ ...p, phone: e.target.value }))} placeholder="+48 123 456 789" />
               </div>
               <div className="space-y-1">
                 <Label>Ulica</Label>
