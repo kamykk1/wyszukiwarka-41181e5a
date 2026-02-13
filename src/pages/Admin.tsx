@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift, ShoppingBag, Plug, Settings } from "lucide-react";
+import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift, ShoppingBag, Plug, Landmark } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AdminUsers from "@/components/admin/AdminUsers";
@@ -8,6 +8,7 @@ import AdminMailing from "@/components/admin/AdminMailing";
 import AdminRewards from "@/components/admin/AdminRewards";
 import AdminRedemptions from "@/components/admin/AdminRedemptions";
 import AdminPartners from "@/components/admin/AdminPartners";
+import AdminFinancialProducts from "@/components/admin/AdminFinancialProducts";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
@@ -15,6 +16,7 @@ const tabs = [
   { id: "users", label: "Użytkownicy", icon: Users },
   { id: "stores", label: "Sklepy", icon: Store },
   { id: "partners", label: "Integracje", icon: Plug },
+  { id: "financial", label: "Oferty finansowe", icon: Landmark },
   { id: "rewards", label: "Nagrody", icon: Gift },
   { id: "redemptions", label: "Zamówienia", icon: ShoppingBag },
   { id: "mailing", label: "Mailing", icon: Mail },
@@ -85,6 +87,7 @@ const Admin = () => {
             {activeTab === "users" && <AdminUsers />}
             {activeTab === "stores" && <AdminStores />}
             {activeTab === "partners" && <AdminPartners />}
+            {activeTab === "financial" && <AdminFinancialProducts />}
             {activeTab === "rewards" && <AdminRewards />}
             {activeTab === "redemptions" && <AdminRedemptions />}
             {activeTab === "mailing" && <AdminMailing />}

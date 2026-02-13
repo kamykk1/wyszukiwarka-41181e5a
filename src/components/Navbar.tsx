@@ -14,15 +14,9 @@ const Navbar = () => {
   const navItems = (
     <>
       <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
-        <Link to="/">
-          <Search className="mr-1.5 h-4 w-4" />
-          Szukaj
-        </Link>
-      </Button>
-      <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
         <Link to="/konta">
           <Landmark className="mr-1.5 h-4 w-4" />
-          Konta
+          Konta Bankowe
         </Link>
       </Button>
       <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
