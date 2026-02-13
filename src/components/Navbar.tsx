@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, User, Shield, LogIn, LogOut, Menu, Heart } from "lucide-react";
+import { Search, User, Shield, LogIn, LogOut, Menu, Heart, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -7,7 +7,7 @@ import { useState } from "react";
 
 const Navbar = () => {
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const [open, setOpen] = useState(false);
 
   const navItems = (
@@ -27,11 +27,19 @@ const Navbar = () => {
             </Link>
           </Button>
           <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
-            <Link to="/admin">
-              <Shield className="mr-1.5 h-4 w-4" />
-              Admin
+            <Link to="/rewards">
+              <Gift className="mr-1.5 h-4 w-4" />
+              Nagrody
             </Link>
           </Button>
+          {isAdmin && (
+            <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+              <Link to="/admin">
+                <Shield className="mr-1.5 h-4 w-4" />
+                Admin
+              </Link>
+            </Button>
+          )}
         </>
       )}
       {user ? (

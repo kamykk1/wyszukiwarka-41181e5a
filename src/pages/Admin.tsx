@@ -1,35 +1,26 @@
-import { useState, useEffect } from "react";
-import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminStores from "@/components/admin/AdminStores";
 import AdminMailing from "@/components/admin/AdminMailing";
+import AdminRewards from "@/components/admin/AdminRewards";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
 const tabs = [
   { id: "users", label: "Użytkownicy", icon: Users },
   { id: "stores", label: "Sklepy", icon: Store },
+  { id: "rewards", label: "Nagrody", icon: Gift },
   { id: "mailing", label: "Mailing", icon: Mail },
 ];
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("users");
-  const { user, loading: authLoading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const { user, loading: authLoading, isAdmin } = useAuth();
 
-  useEffect(() => {
-    const checkAdmin = async () => {
-      if (!user) { setIsAdmin(false); return; }
-      const { data } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" as const });
-      setIsAdmin(!!data);
-    };
-    if (!authLoading) checkAdmin();
-  }, [user, authLoading]);
-
-  if (authLoading || isAdmin === null) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -89,6 +80,7 @@ const Admin = () => {
           <div className="flex-1 animate-fade-in">
             {activeTab === "users" && <AdminUsers />}
             {activeTab === "stores" && <AdminStores />}
+            {activeTab === "rewards" && <AdminRewards />}
             {activeTab === "mailing" && <AdminMailing />}
           </div>
         </div>
