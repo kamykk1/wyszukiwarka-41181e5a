@@ -231,16 +231,19 @@ export type Database = {
       }
       page_settings: {
         Row: {
+          header_html: string
           id: string
           subtitle: string
           updated_at: string
         }
         Insert: {
+          header_html?: string
           id: string
           subtitle?: string
           updated_at?: string
         }
         Update: {
+          header_html?: string
           id?: string
           subtitle?: string
           updated_at?: string

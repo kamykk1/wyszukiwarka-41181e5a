@@ -35,7 +35,7 @@ const Konta = () => {
   const [products, setProducts] = useState<FinancialProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [subtitle, setSubtitle] = useState("Porównaj najlepsze konta osobiste, firmowe i oszczędnościowe");
+  const [headerHtml, setHeaderHtml] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("typ") || "konta_osobiste";
   const { user } = useAuth();
@@ -57,8 +57,8 @@ const Konta = () => {
   }, [activeTab]);
 
   useEffect(() => {
-    supabase.from("page_settings").select("subtitle").eq("id", "konta").maybeSingle().then(({ data }) => {
-      if (data?.subtitle) setSubtitle(data.subtitle);
+    supabase.from("page_settings").select("header_html").eq("id", "konta").maybeSingle().then(({ data }) => {
+      if (data?.header_html) setHeaderHtml(data.header_html);
     });
   }, []);
 
@@ -81,12 +81,18 @@ const Konta = () => {
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8 text-center">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent">
-            <Landmark className="h-3.5 w-3.5" />
-            Porównywarka kont bankowych
-          </div>
-          <h1 className="text-3xl font-black text-foreground md:text-4xl">Konta Bankowe</h1>
-          <p className="mt-2 text-muted-foreground">{subtitle}</p>
+          {headerHtml ? (
+            <div dangerouslySetInnerHTML={{ __html: headerHtml }} />
+          ) : (
+            <>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent">
+                <Landmark className="h-3.5 w-3.5" />
+                Porównywarka kont bankowych
+              </div>
+              <h1 className="text-3xl font-black text-foreground md:text-4xl">Konta Bankowe</h1>
+              <p className="mt-2 text-muted-foreground">Porównaj najlepsze konta osobiste, firmowe i oszczędnościowe</p>
+            </>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={setTab} className="mx-auto mb-8 max-w-lg">
