@@ -114,7 +114,7 @@ const Kredyty = () => {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     {product.image_url && (
-                      <img src={product.image_url} alt={product.provider} className="h-8 w-8 rounded object-contain bg-white p-0.5" />
+                      <img src={product.image_url} alt={product.provider} className="h-12 w-12 rounded-lg object-contain bg-white p-1 border" />
                     )}
                     <div>
                       <h3 className="font-bold text-foreground">{product.name}</h3>
@@ -125,7 +125,11 @@ const Kredyty = () => {
                     <Badge variant="secondary" className="text-accent font-bold">RRSO {product.interest_rate}%</Badge>
                   )}
                 </div>
-                {product.description && <p className="text-sm text-muted-foreground mb-3">{product.description}</p>}
+                {product.description && (
+                  <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">
+                    {product.description.replace(/<br\s*\/?>/gi, '\n').replace(/\n\s*-/g, '\n• ')}
+                  </p>
+                )}
                 {(product.min_amount || product.max_amount) && (
                   <p className="text-xs text-muted-foreground mb-3">
                     Kwota: {product.min_amount ? `${product.min_amount.toLocaleString()} zł` : "—"} – {product.max_amount ? `${product.max_amount.toLocaleString()} zł` : "—"}
