@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, User, Shield, LogIn, LogOut, Menu, Heart, Gift } from "lucide-react";
+import { Search, User, Shield, LogIn, LogOut, Menu, Heart, Gift, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -16,6 +16,12 @@ const Navbar = () => {
         <Link to="/">
           <Search className="mr-1.5 h-4 w-4" />
           Szukaj
+        </Link>
+      </Button>
+      <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+        <Link to="/leaderboard">
+          <Trophy className="mr-1.5 h-4 w-4" />
+          Ranking
         </Link>
       </Button>
       {user && (

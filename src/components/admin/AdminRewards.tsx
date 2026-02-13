@@ -23,6 +23,8 @@ const AdminRewards = () => {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
   const [pointValue, setPointValue] = useState(0.01);
+  const [clickPoints, setClickPoints] = useState(1);
+  const [purchasePoints, setPurchasePoints] = useState(10);
   const [addOpen, setAddOpen] = useState(false);
   const [newReward, setNewReward] = useState({ name: "", description: "", points_cost: 100, stock: "", image_url: "" });
 
@@ -30,18 +32,22 @@ const AdminRewards = () => {
     setLoading(true);
     const [{ data: rewardsData }, { data: settingsData }] = await Promise.all([
       supabase.from("rewards").select("*").order("created_at", { ascending: false }),
-      supabase.from("reward_settings").select("point_value_pln").eq("id", "default").maybeSingle(),
+      supabase.from("reward_settings").select("point_value_pln, click_points, purchase_points").eq("id", "default").maybeSingle(),
     ]);
     setRewards((rewardsData as Reward[]) || []);
-    if (settingsData) setPointValue(settingsData.point_value_pln);
+    if (settingsData) {
+      setPointValue(settingsData.point_value_pln);
+      setClickPoints(settingsData.click_points ?? 1);
+      setPurchasePoints(settingsData.purchase_points ?? 10);
+    }
     setLoading(false);
   };
 
   useEffect(() => { fetchAll(); }, []);
 
-  const savePointValue = async () => {
-    await supabase.from("reward_settings").update({ point_value_pln: pointValue }).eq("id", "default");
-    toast({ title: "Zapisano wartość punktu" });
+  const saveSettings = async () => {
+    await supabase.from("reward_settings").update({ point_value_pln: pointValue, click_points: clickPoints, purchase_points: purchasePoints }).eq("id", "default");
+    toast({ title: "Zapisano ustawienia punktów" });
   };
 
   const addReward = async () => {
@@ -114,18 +120,21 @@ const AdminRewards = () => {
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
           <Settings className="h-4 w-4" /> Ustawienia punktów
         </h3>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">1 punkt =</span>
-          <Input
-            type="number"
-            step="0.001"
-            min="0.001"
-            value={pointValue}
-            onChange={e => setPointValue(parseFloat(e.target.value) || 0)}
-            className="w-28"
-          />
-          <span className="text-sm text-muted-foreground">PLN</span>
-          <Button size="sm" onClick={savePointValue}>Zapisz</Button>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">1 punkt =</span>
+            <Input type="number" step="0.001" min="0.001" value={pointValue} onChange={e => setPointValue(parseFloat(e.target.value) || 0)} className="w-28" />
+            <span className="text-sm text-muted-foreground">PLN</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Punkty za kliknięcie:</span>
+            <Input type="number" min="0" max="100" value={clickPoints} onChange={e => setClickPoints(parseInt(e.target.value) || 0)} className="w-20" />
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Punkty za zakup:</span>
+            <Input type="number" min="0" max="1000" value={purchasePoints} onChange={e => setPurchasePoints(parseInt(e.target.value) || 0)} className="w-20" />
+          </div>
+          <Button size="sm" onClick={saveSettings}>Zapisz</Button>
         </div>
       </div>
 
