@@ -74,10 +74,18 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Optional: filter by partner_id or category
+    // Accept partner_id/category from query params or body
     const url = new URL(req.url);
-    const filterPartnerId = url.searchParams.get("partner_id");
-    const filterCategory = url.searchParams.get("category");
+    let filterPartnerId = url.searchParams.get("partner_id");
+    let filterCategory = url.searchParams.get("category");
+
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (body?.partner_id) filterPartnerId = body.partner_id;
+        if (body?.category) filterCategory = body.category;
+      } catch { /* no body */ }
+    }
 
     // Fetch enabled partners with configured base_url
     let query = supabase
