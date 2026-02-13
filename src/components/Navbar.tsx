@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, User, Shield, LogIn, LogOut, Menu, Heart, Gift, Trophy, Bell, Landmark, CreditCard, PiggyBank } from "lucide-react";
+import { Search, User, LogIn, LogOut, Menu, Heart, Gift, Trophy, Landmark, CreditCard, PiggyBank } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -8,7 +8,7 @@ import logo from "@/assets/logo.png";
 
 const Navbar = () => {
   const location = useLocation();
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
 
   const navItems = (
@@ -52,25 +52,11 @@ const Navbar = () => {
             </Link>
           </Button>
           <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
-            <Link to="/notifications">
-              <Bell className="mr-1.5 h-4 w-4" />
-              Powiadomienia
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
             <Link to="/profile">
               <User className="mr-1.5 h-4 w-4" />
               Profil
             </Link>
           </Button>
-          {isAdmin && (
-            <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
-              <Link to="/admin">
-                <Shield className="mr-1.5 h-4 w-4" />
-                Admin
-              </Link>
-            </Button>
-          )}
         </>
       )}
       {user ? (
@@ -100,8 +86,12 @@ const Navbar = () => {
   return (
     <nav className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link to="/" className="flex items-center">
-          <img src={logo} alt="NetSzukacz" className="h-16 w-auto rounded-lg" />
+        <Link to="/" className="flex items-center gap-3">
+          <img src={logo} alt="NetSzukacz" className="h-20 w-auto rounded-lg" />
+          <div className="hidden sm:flex flex-col leading-tight">
+            <span className="text-lg font-black text-foreground">net szukacz.pl</span>
+            <span className="text-[10px] text-muted-foreground">otrzymuj punkty za codzienne czynności</span>
+          </div>
         </Link>
 
         {/* Desktop */}

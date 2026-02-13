@@ -14,7 +14,7 @@ import Favorites from "./pages/Favorites";
 import Rewards from "./pages/Rewards";
 import Profile from "./pages/Profile";
 import Leaderboard from "./pages/Leaderboard";
-import Notifications from "./pages/Notifications";
+
 import MailingClick from "./pages/MailingClick";
 import Konta from "./pages/Konta";
 import Kredyty from "./pages/Kredyty";
@@ -35,13 +35,13 @@ const App = () => (
             <Route path="/search" element={<SearchResults />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin-panel" element={<Admin />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/rewards" element={<Rewards />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/notifications" element={<Notifications />} />
+            
             <Route path="/mailing-click" element={<MailingClick />} />
             <Route path="/konta" element={<Konta />} />
             <Route path="/kredyty" element={<Kredyty />} />
