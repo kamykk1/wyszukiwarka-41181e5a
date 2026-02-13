@@ -8,20 +8,21 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-interface PartnerIntegration {
+interface PartnerView {
   id: string;
   name: string;
   display_name: string;
   enabled: boolean;
-  api_key: string | null;
-  api_secret: string | null;
   base_url: string | null;
   task_points: number;
   description: string | null;
+  has_api_key: boolean;
+  category_api_keys_configured: Record<string, boolean>;
+  category_points: Record<string, number>;
 }
 
 const AdminPartners = () => {
-  const [partners, setPartners] = useState<PartnerIntegration[]>([]);
+  const [partners, setPartners] = useState<PartnerView[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fetchingOffers, setFetchingOffers] = useState<string | null>(null);
@@ -30,13 +31,22 @@ const AdminPartners = () => {
   });
   const { toast } = useToast();
 
+  const getAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session ? { Authorization: `Bearer ${session.access_token}` } : {};
+  };
+
   const fetchPartners = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("partner_integrations").select("*").order("display_name");
-    if (error) {
-      toast({ title: "Błąd", description: error.message, variant: "destructive" });
-    } else {
-      setPartners(data as PartnerIntegration[]);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-partners?action=list", {
+        method: "GET",
+        headers: await getAuthHeaders(),
+      });
+      if (error) throw error;
+      setPartners(Array.isArray(data) ? data : []);
+    } catch (e) {
+      toast({ title: "Błąd", description: e instanceof Error ? e.message : "Nieznany błąd", variant: "destructive" });
     }
     setLoading(false);
   };
@@ -44,34 +54,49 @@ const AdminPartners = () => {
   useEffect(() => { fetchPartners(); }, []);
 
   const toggleEnabled = async (id: string, current: boolean) => {
-    await supabase.from("partner_integrations").update({ enabled: !current }).eq("id", id);
-    setPartners(prev => prev.map(p => p.id === id ? { ...p, enabled: !current } : p));
-    toast({ title: !current ? "Integracja włączona ✓" : "Integracja wyłączona" });
+    try {
+      await supabase.functions.invoke("admin-partners?action=toggle", {
+        body: { id, enabled: !current },
+        headers: await getAuthHeaders(),
+      });
+      setPartners(prev => prev.map(p => p.id === id ? { ...p, enabled: !current } : p));
+      toast({ title: !current ? "Integracja włączona ✓" : "Integracja wyłączona" });
+    } catch (e) {
+      toast({ title: "Błąd", description: e instanceof Error ? e.message : "Nieznany błąd", variant: "destructive" });
+    }
   };
 
-  const startEditing = (partner: PartnerIntegration) => {
+  const startEditing = (partner: PartnerView) => {
     setEditingId(partner.id);
     setEditValues({
-      api_key: partner.api_key || "",
-      api_secret: partner.api_secret || "",
+      api_key: "",
+      api_secret: "",
       task_points: partner.task_points,
       base_url: partner.base_url || "",
     });
   };
 
   const saveSettings = async (id: string) => {
-    const { error } = await supabase.from("partner_integrations").update({
-      api_key: editValues.api_key || null,
-      api_secret: editValues.api_secret || null,
-      task_points: editValues.task_points,
-      base_url: editValues.base_url || null,
-    }).eq("id", id);
-    if (error) {
-      toast({ title: "Błąd", description: error.message, variant: "destructive" });
-    } else {
+    try {
+      const body: Record<string, any> = {
+        id,
+        task_points: editValues.task_points,
+        base_url: editValues.base_url || null,
+      };
+      // Only send credentials if user typed new values
+      if (editValues.api_key) body.api_key = editValues.api_key;
+      if (editValues.api_secret) body.api_secret = editValues.api_secret;
+
+      const { error } = await supabase.functions.invoke("admin-partners?action=update", {
+        body,
+        headers: await getAuthHeaders(),
+      });
+      if (error) throw error;
       toast({ title: "Ustawienia zapisane ✓" });
       setEditingId(null);
       fetchPartners();
+    } catch (e) {
+      toast({ title: "Błąd", description: e instanceof Error ? e.message : "Nieznany błąd", variant: "destructive" });
     }
   };
 
@@ -105,7 +130,7 @@ const AdminPartners = () => {
           if (t.status !== "confirmed") continue;
           if (!s[t.partner_id]) s[t.partner_id] = { tasks: 0, points: 0 };
           s[t.partner_id].tasks++;
-          s[t.partner_id].points += t.points_awarded;
+          s[t.partner_id].points += t.points_awarded || 0;
         }
         setStats(s);
       }
@@ -141,7 +166,7 @@ const AdminPartners = () => {
                       <p className="font-semibold text-foreground">{partner.display_name}</p>
                       <p className="text-xs text-muted-foreground">
                         {partner.enabled ? "Aktywna" : "Wyłączona"}
-                        {partner.api_key ? " · API skonfigurowane" : ""}
+                        {partner.has_api_key ? " · API skonfigurowane" : ""}
                         {pStats ? ` · ${pStats.tasks} zadań · ${pStats.points} pkt` : ""}
                       </p>
                     </div>
@@ -174,11 +199,13 @@ const AdminPartners = () => {
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
                         <Label>API Key</Label>
-                        <Input type="password" placeholder="Klucz API..." value={editValues.api_key} onChange={e => setEditValues(prev => ({ ...prev, api_key: e.target.value }))} className="mt-1.5" />
+                        <Input type="password" placeholder="Wpisz nowy klucz API..." value={editValues.api_key} onChange={e => setEditValues(prev => ({ ...prev, api_key: e.target.value }))} className="mt-1.5" />
+                        <p className="text-xs text-muted-foreground mt-1">Pozostaw puste, aby zachować istniejący klucz</p>
                       </div>
                       <div>
                         <Label>API Secret</Label>
-                        <Input type="password" placeholder="Sekret API..." value={editValues.api_secret} onChange={e => setEditValues(prev => ({ ...prev, api_secret: e.target.value }))} className="mt-1.5" />
+                        <Input type="password" placeholder="Wpisz nowy sekret API..." value={editValues.api_secret} onChange={e => setEditValues(prev => ({ ...prev, api_secret: e.target.value }))} className="mt-1.5" />
+                        <p className="text-xs text-muted-foreground mt-1">Pozostaw puste, aby zachować istniejący sekret</p>
                       </div>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
