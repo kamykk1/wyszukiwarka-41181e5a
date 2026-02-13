@@ -35,5 +35,34 @@ export const useClickPoints = () => {
     [user, toast]
   );
 
-  return { trackPurchaseClick };
+  const confirmPurchase = useCallback(
+    async (productName: string, storeName: string) => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase.rpc("award_purchase_points", {
+          _user_id: user.id,
+          _product_name: productName,
+          _store_name: storeName,
+        });
+
+        if (error) {
+          console.error("Purchase points error:", error);
+          return;
+        }
+
+        if (data && typeof data === "object" && "success" in data && (data as any).success) {
+          toast({
+            title: "+10 punktów! 🛍️",
+            description: `Zdobyłeś 10 punktów za zakup w ${storeName}.`,
+          });
+        }
+      } catch (err) {
+        console.error("Purchase points error:", err);
+      }
+    },
+    [user, toast]
+  );
+
+  return { trackPurchaseClick, confirmPurchase };
 };

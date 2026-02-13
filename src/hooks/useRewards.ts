@@ -27,12 +27,21 @@ export interface Redemption {
   rewards?: Reward;
 }
 
+export interface PointsTransaction {
+  id: string;
+  amount: number;
+  type: string;
+  description: string | null;
+  created_at: string;
+}
+
 export const useRewards = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [userPoints, setUserPoints] = useState<UserPoints>({ balance: 0, total_earned: 0 });
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
+  const [transactions, setTransactions] = useState<PointsTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchRewards = async () => {
@@ -62,6 +71,17 @@ export const useRewards = () => {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     setRedemptions((data as Redemption[]) || []);
+  };
+
+  const fetchTransactions = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("points_transactions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setTransactions((data as PointsTransaction[]) || []);
   };
 
   const redeemReward = async (reward: Reward) => {
@@ -95,11 +115,11 @@ export const useRewards = () => {
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      await Promise.all([fetchRewards(), fetchUserPoints(), fetchRedemptions()]);
+      await Promise.all([fetchRewards(), fetchUserPoints(), fetchRedemptions(), fetchTransactions()]);
       setLoading(false);
     };
     loadAll();
   }, [user]);
 
-  return { rewards, userPoints, redemptions, loading, redeemReward, refetch: () => { fetchRewards(); fetchUserPoints(); fetchRedemptions(); } };
+  return { rewards, userPoints, redemptions, transactions, loading, redeemReward, refetch: () => { fetchRewards(); fetchUserPoints(); fetchRedemptions(); fetchTransactions(); } };
 };

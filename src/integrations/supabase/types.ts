@@ -342,6 +342,10 @@ export type Database = {
         Args: { _product_name: string; _user_id: string }
         Returns: Json
       }
+      award_purchase_points: {
+        Args: { _product_name: string; _store_name: string; _user_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

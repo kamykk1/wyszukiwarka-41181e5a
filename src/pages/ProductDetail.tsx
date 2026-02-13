@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Star, ExternalLink, TrendingDown, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Star, ExternalLink, TrendingDown, ShieldCheck, ShoppingBag } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { getProductGroup, stores } from "@/data/mockProducts";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +35,7 @@ const ProductDetail = () => {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { createAlert, getAlertForProduct } = usePriceAlerts();
   const existingAlert = getAlertForProduct(product.name);
-  const { trackPurchaseClick } = useClickPoints();
+  const { trackPurchaseClick, confirmPurchase } = useClickPoints();
 
   return (
     <div className="min-h-screen bg-background">
@@ -157,19 +157,27 @@ const ProductDetail = () => {
                         </p>
                       )}
                     </div>
-                    <a
-                      href={offer.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => trackPurchaseClick(product.name)}
-                      className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                        isCheapest
-                          ? "bg-accent text-accent-foreground hover:bg-accent/90"
-                          : "bg-accent/10 text-accent hover:bg-accent hover:text-accent-foreground"
-                      }`}
-                    >
-                      Kup <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
+                    <div className="flex flex-col gap-1.5">
+                      <a
+                        href={offer.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => trackPurchaseClick(product.name)}
+                        className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                          isCheapest
+                            ? "bg-accent text-accent-foreground hover:bg-accent/90"
+                            : "bg-accent/10 text-accent hover:bg-accent hover:text-accent-foreground"
+                        }`}
+                      >
+                        Kup <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                      <button
+                        onClick={() => confirmPurchase(product.name, store?.name || "")}
+                        className="flex items-center justify-center gap-1 rounded-lg bg-success/10 px-3 py-1.5 text-xs font-medium text-success hover:bg-success/20 transition-colors"
+                      >
+                        <ShoppingBag className="h-3 w-3" /> +10 pkt
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
