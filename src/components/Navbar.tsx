@@ -100,11 +100,8 @@ const Navbar = () => {
   return (
     <nav className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2">
-          <img src={logo} alt="NetSzukacz" className="h-9 w-9 rounded-lg" />
-          <span className="text-lg font-bold tracking-tight text-foreground">
-            NetSzukacz
-          </span>
+        <Link to="/" className="flex items-center">
+          <img src={logo} alt="NetSzukacz" className="h-12 w-auto rounded-lg" />
         </Link>
 
         {/* Desktop */}
