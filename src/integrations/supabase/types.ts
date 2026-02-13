@@ -229,6 +229,24 @@ export type Database = {
         }
         Relationships: []
       }
+      page_settings: {
+        Row: {
+          id: string
+          subtitle: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          subtitle?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          subtitle?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       partner_integrations: {
         Row: {
           api_key: string | null

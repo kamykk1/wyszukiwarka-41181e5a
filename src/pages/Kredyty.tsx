@@ -36,6 +36,7 @@ const Kredyty = () => {
   const [products, setProducts] = useState<FinancialProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [subtitle, setSubtitle] = useState("Znajdź najkorzystniejszy kredyt gotówkowy, konsolidacyjny lub hipoteczny");
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("typ") || "kredyty_gotowkowe";
   const { user } = useAuth();
@@ -55,6 +56,12 @@ const Kredyty = () => {
     };
     fetchProducts();
   }, [activeTab]);
+
+  useEffect(() => {
+    supabase.from("page_settings").select("subtitle").eq("id", "kredyty").maybeSingle().then(({ data }) => {
+      if (data?.subtitle) setSubtitle(data.subtitle);
+    });
+  }, []);
 
   const filtered = products.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -80,7 +87,7 @@ const Kredyty = () => {
             Porównywarka kredytów
           </div>
           <h1 className="text-3xl font-black text-foreground md:text-4xl">Kredyty</h1>
-          <p className="mt-2 text-muted-foreground">Znajdź najkorzystniejszy kredyt gotówkowy, konsolidacyjny lub hipoteczny</p>
+          <p className="mt-2 text-muted-foreground">{subtitle}</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setTab} className="mx-auto mb-8 max-w-lg">
@@ -108,7 +115,7 @@ const Kredyty = () => {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     {product.image_url && (
-                      <img src={product.image_url} alt={product.provider} className="h-16 w-16 rounded-lg object-contain bg-white p-1 border" />
+                      <img src={product.image_url} alt={product.provider} className="h-20 w-20 rounded-lg object-contain bg-white p-1 border" />
                     )}
                     <div>
                       <h3 className="font-bold text-foreground">{product.name}</h3>
