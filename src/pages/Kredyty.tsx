@@ -108,7 +108,7 @@ const Kredyty = () => {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     {product.image_url && (
-                      <img src={product.image_url} alt={product.provider} className="h-12 w-12 rounded-lg object-contain bg-white p-1 border" />
+                      <img src={product.image_url} alt={product.provider} className="h-16 w-16 rounded-lg object-contain bg-white p-1 border" />
                     )}
                     <div>
                       <h3 className="font-bold text-foreground">{product.name}</h3>
