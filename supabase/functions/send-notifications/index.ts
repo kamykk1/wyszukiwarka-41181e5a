@@ -7,6 +7,28 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function sendEmail(to: string, subject: string, html: string) {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendKey) {
+    console.warn("RESEND_API_KEY not set, skipping email");
+    return;
+  }
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "SmartPrice <onboarding@resend.dev>",
+      to: [to],
+      subject,
+      html,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`Resend error [${res.status}]: ${body}`);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -19,7 +41,6 @@ Deno.serve(async (req) => {
 
     const results: string[] = [];
 
-    // 1. Get all users with email notifications enabled
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, name, email_notifications, points_threshold")
@@ -31,7 +52,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2. Check for new rewards added in the last 24h
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: newRewards } = await supabase
       .from("rewards")
@@ -39,7 +59,6 @@ Deno.serve(async (req) => {
       .eq("is_active", true)
       .gte("created_at", yesterday);
 
-    // 3. Check point thresholds for each user
     for (const profile of profiles) {
       const { data: points } = await supabase
         .from("user_points")
@@ -51,9 +70,7 @@ Deno.serve(async (req) => {
 
       const threshold = profile.points_threshold || 500;
 
-      // Check if user just crossed their threshold
       if (points.total_earned >= threshold) {
-        // Check if we already notified for this threshold
         const { data: existing } = await supabase
           .from("notification_log")
           .select("id")
@@ -63,28 +80,27 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (!existing) {
-          // Get user email
           const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
           if (authUser?.user?.email) {
-            // Log notification (email would be sent via external service)
             await supabase.from("notification_log").insert({
               user_id: profile.user_id,
               type: "threshold",
               reference_id: String(threshold),
             });
 
-            results.push(
-              `Threshold notification for ${authUser.user.email}: reached ${points.total_earned}/${threshold} points`
+            await sendEmail(
+              authUser.user.email,
+              `🎉 Osiągnięto ${threshold} punktów w SmartPrice!`,
+              `<h2>Gratulacje${profile.name ? `, ${profile.name}` : ""}!</h2>
+               <p>Zdobyłeś już <strong>${points.total_earned}</strong> punktów w programie SmartPrice.</p>
+               <p>Sprawdź dostępne nagrody w naszym katalogu!</p>`
             );
 
-            console.log(
-              `📧 [THRESHOLD] ${authUser.user.email} reached ${points.total_earned} points (threshold: ${threshold})`
-            );
+            results.push(`Threshold email → ${authUser.user.email}: ${points.total_earned}/${threshold}`);
           }
         }
       }
 
-      // Notify about new rewards
       if (newRewards && newRewards.length > 0) {
         for (const reward of newRewards) {
           const { data: existing } = await supabase
@@ -104,13 +120,16 @@ Deno.serve(async (req) => {
                 reference_id: reward.id,
               });
 
-              results.push(
-                `New reward notification for ${authUser.user.email}: "${reward.name}" (${reward.points_cost} pkt)`
+              await sendEmail(
+                authUser.user.email,
+                `🎁 Nowa nagroda w SmartPrice: ${reward.name}`,
+                `<h2>Nowa nagroda dostępna!</h2>
+                 <p><strong>${reward.name}</strong> — ${reward.points_cost} punktów</p>
+                 ${reward.description ? `<p>${reward.description}</p>` : ""}
+                 <p>Zaloguj się i odbierz swoją nagrodę!</p>`
               );
 
-              console.log(
-                `📧 [NEW REWARD] ${authUser.user.email}: "${reward.name}" available for ${reward.points_cost} points`
-              );
+              results.push(`New reward email → ${authUser.user.email}: "${reward.name}"`);
             }
           }
         }
@@ -118,11 +137,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        notifications_sent: results.length,
-        details: results,
-      }),
+      JSON.stringify({ success: true, notifications_sent: results.length, details: results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
