@@ -71,35 +71,20 @@ export const useRewards = () => {
       return;
     }
 
-    // Insert redemption
-    const { error: redemptionError } = await supabase.from("reward_redemptions").insert({
-      user_id: user.id,
-      reward_id: reward.id,
-      points_spent: reward.points_cost,
+    const { data, error } = await supabase.rpc("redeem_reward", {
+      _user_id: user.id,
+      _reward_id: reward.id,
     });
-    if (redemptionError) {
+
+    if (error) {
       toast({ title: "Błąd", description: "Nie udało się odebrać nagrody.", variant: "destructive" });
       return;
     }
 
-    // Deduct points
-    const { error: pointsError } = await supabase
-      .from("user_points")
-      .update({ balance: userPoints.balance - reward.points_cost })
-      .eq("user_id", user.id);
-
-    if (pointsError) {
-      toast({ title: "Błąd", description: "Problem z aktualizacją punktów.", variant: "destructive" });
+    if (data && typeof data === "object" && "error" in data) {
+      toast({ title: "Błąd", description: String((data as any).error), variant: "destructive" });
       return;
     }
-
-    // Log transaction
-    await supabase.from("points_transactions").insert({
-      user_id: user.id,
-      amount: -reward.points_cost,
-      type: "redeemed",
-      description: `Odebrano: ${reward.name}`,
-    });
 
     toast({ title: "Sukces! 🎉", description: `Odebrano nagrodę: ${reward.name}` });
     fetchUserPoints();

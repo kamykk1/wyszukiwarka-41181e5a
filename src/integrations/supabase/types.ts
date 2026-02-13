@@ -321,6 +321,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      redeem_reward: {
+        Args: { _reward_id: string; _user_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

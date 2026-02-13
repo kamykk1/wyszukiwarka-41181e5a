@@ -45,14 +45,43 @@ const AdminRewards = () => {
   };
 
   const addReward = async () => {
-    if (!newReward.name || newReward.points_cost <= 0) return;
-    await supabase.from("rewards").insert({
-      name: newReward.name,
-      description: newReward.description || null,
+    const name = newReward.name.trim();
+    const description = newReward.description.trim();
+    const imageUrl = newReward.image_url.trim();
+    const stock = newReward.stock ? parseInt(newReward.stock) : null;
+
+    if (!name || name.length > 200) {
+      toast({ title: "Błąd", description: "Nazwa nagrody musi mieć 1-200 znaków.", variant: "destructive" });
+      return;
+    }
+    if (description && description.length > 1000) {
+      toast({ title: "Błąd", description: "Opis może mieć max 1000 znaków.", variant: "destructive" });
+      return;
+    }
+    if (newReward.points_cost <= 0 || newReward.points_cost > 10000000) {
+      toast({ title: "Błąd", description: "Koszt punktowy musi być między 1 a 10 000 000.", variant: "destructive" });
+      return;
+    }
+    if (stock !== null && (stock < 0 || stock > 1000000)) {
+      toast({ title: "Błąd", description: "Stan magazynowy musi być między 0 a 1 000 000.", variant: "destructive" });
+      return;
+    }
+    if (imageUrl && (imageUrl.length > 2000 || !/^https?:\/\/.+/.test(imageUrl))) {
+      toast({ title: "Błąd", description: "Podaj poprawny URL obrazka (max 2000 znaków).", variant: "destructive" });
+      return;
+    }
+
+    const { error } = await supabase.from("rewards").insert({
+      name,
+      description: description || null,
       points_cost: newReward.points_cost,
-      stock: newReward.stock ? parseInt(newReward.stock) : null,
-      image_url: newReward.image_url || null,
+      stock,
+      image_url: imageUrl || null,
     });
+    if (error) {
+      toast({ title: "Błąd", description: "Nie udało się dodać nagrody.", variant: "destructive" });
+      return;
+    }
     setNewReward({ name: "", description: "", points_cost: 100, stock: "", image_url: "" });
     setAddOpen(false);
     toast({ title: "Dodano nagrodę" });
