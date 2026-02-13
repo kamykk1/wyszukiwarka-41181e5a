@@ -17,6 +17,7 @@ const typeConfig: Record<string, { label: string; icon: React.ReactNode; color: 
   earned: { label: "Zdobyte", icon: <ArrowUpCircle className="h-4 w-4" />, color: "text-success" },
   redeemed: { label: "Wydane", icon: <ArrowDownCircle className="h-4 w-4" />, color: "text-destructive" },
   adjusted: { label: "Korekta", icon: <Settings2 className="h-4 w-4" />, color: "text-muted-foreground" },
+  partner_task: { label: "Zadanie partnera", icon: <ArrowUpCircle className="h-4 w-4" />, color: "text-accent" },
 };
 
 const Profile = () => {

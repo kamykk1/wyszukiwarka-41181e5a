@@ -1,9 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, User, Shield, LogIn, LogOut, Menu, Heart, Gift, Trophy, Bell } from "lucide-react";
+import { Search, User, Shield, LogIn, LogOut, Menu, Heart, Gift, Trophy, Bell, Landmark, CreditCard, PiggyBank } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { useState } from "react";
+import logo from "@/assets/logo.png";
 
 const Navbar = () => {
   const location = useLocation();
@@ -16,6 +17,24 @@ const Navbar = () => {
         <Link to="/">
           <Search className="mr-1.5 h-4 w-4" />
           Szukaj
+        </Link>
+      </Button>
+      <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+        <Link to="/konta">
+          <Landmark className="mr-1.5 h-4 w-4" />
+          Konta
+        </Link>
+      </Button>
+      <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+        <Link to="/kredyty">
+          <CreditCard className="mr-1.5 h-4 w-4" />
+          Kredyty
+        </Link>
+      </Button>
+      <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+        <Link to="/lokaty">
+          <PiggyBank className="mr-1.5 h-4 w-4" />
+          Lokaty
         </Link>
       </Button>
       <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
@@ -88,22 +107,20 @@ const Navbar = () => {
     <nav className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent font-extrabold text-accent-foreground text-sm">
-            SP
-          </div>
+          <img src={logo} alt="NetSzukacz" className="h-9 w-9 rounded-lg" />
           <span className="text-lg font-bold tracking-tight text-foreground">
-            SmartPrice
+            NetSzukacz
           </span>
         </Link>
 
         {/* Desktop */}
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="hidden items-center gap-1 lg:flex">
           {navItems}
         </div>
 
         {/* Mobile */}
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild className="md:hidden">
+          <SheetTrigger asChild className="lg:hidden">
             <Button variant="ghost" size="icon">
               <Menu className="h-5 w-5" />
             </Button>

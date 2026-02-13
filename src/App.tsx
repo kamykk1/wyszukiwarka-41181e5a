@@ -16,6 +16,9 @@ import Profile from "./pages/Profile";
 import Leaderboard from "./pages/Leaderboard";
 import Notifications from "./pages/Notifications";
 import MailingClick from "./pages/MailingClick";
+import Konta from "./pages/Konta";
+import Kredyty from "./pages/Kredyty";
+import Lokaty from "./pages/Lokaty";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +43,9 @@ const App = () => (
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/mailing-click" element={<MailingClick />} />
+            <Route path="/konta" element={<Konta />} />
+            <Route path="/kredyty" element={<Kredyty />} />
+            <Route path="/lokaty" element={<Lokaty />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
