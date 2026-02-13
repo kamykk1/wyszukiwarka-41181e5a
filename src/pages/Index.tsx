@@ -12,8 +12,8 @@ const features = [
 ];
 
 const financeCards = [
-  { icon: Landmark, title: "Konta bankowe", desc: "Porównaj konta osobiste i oszczędnościowe", path: "/konta", color: "text-blue-500" },
-  { icon: CreditCard, title: "Kredyty", desc: "Znajdź najkorzystniejszy kredyt", path: "/kredyty", color: "text-green-500" },
+  { icon: Landmark, title: "Konta Bankowe", desc: "Porównaj konta osobiste, firmowe i oszczędnościowe", path: "/konta", color: "text-blue-500" },
+  { icon: CreditCard, title: "Kredyty", desc: "Kredyty gotówkowe, konsolidacyjne i hipoteczne", path: "/kredyty", color: "text-green-500" },
   { icon: PiggyBank, title: "Lokaty", desc: "Najwyższe oprocentowanie lokat", path: "/lokaty", color: "text-amber-500" },
 ];
 
@@ -90,25 +90,6 @@ const Index = () => {
               </div>
               <h3 className="mb-1 font-bold text-foreground">{f.title}</h3>
               <p className="text-sm text-muted-foreground">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="container mx-auto px-4 pb-16">
-        <h2 className="mb-6 text-center text-2xl font-bold text-foreground">Wspierane sklepy</h2>
-        <div className="flex flex-wrap items-center justify-center gap-4">
-          {stores.map(store => (
-            <div
-              key={store.id}
-              className={`flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition-opacity ${
-                store.enabled ? "opacity-100" : "opacity-30"
-              }`}
-              style={{ borderColor: `${store.color}30`, color: store.color }}
-            >
-              <span className="text-lg">{store.logo}</span>
-              {store.name}
-              {!store.enabled && <span className="text-xs text-muted-foreground">(wkrótce)</span>}
             </div>
           ))}
         </div>

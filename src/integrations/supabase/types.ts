@@ -227,6 +227,7 @@ export type Database = {
           api_key: string | null
           api_secret: string | null
           base_url: string | null
+          category_points: Json
           created_at: string
           description: string | null
           display_name: string
@@ -240,6 +241,7 @@ export type Database = {
           api_key?: string | null
           api_secret?: string | null
           base_url?: string | null
+          category_points?: Json
           created_at?: string
           description?: string | null
           display_name: string
@@ -253,6 +255,7 @@ export type Database = {
           api_key?: string | null
           api_secret?: string | null
           base_url?: string | null
+          category_points?: Json
           created_at?: string
           description?: string | null
           display_name?: string

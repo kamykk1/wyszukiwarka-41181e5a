@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Gift, CheckCircle, Clock, XCircle, User, Ban } from "lucide-react";
+import { Loader2, Gift, CheckCircle, Clock, XCircle, User, Ban, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ const AdminRedemptions = () => {
   const { toast } = useToast();
   const [redemptions, setRedemptions] = useState<RedemptionRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailRedemption, setDetailRedemption] = useState<RedemptionRow | null>(null);
   const [detailUser, setDetailUser] = useState<UserDetail | null>(null);
@@ -49,11 +50,17 @@ const AdminRedemptions = () => {
 
   const fetchRedemptions = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from("reward_redemptions")
       .select("*, rewards(name)")
       .order("created_at", { ascending: false })
       .limit(100);
+
+    if (statusFilter !== "all") {
+      query = query.eq("status", statusFilter);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       toast({ title: "Błąd", description: "Nie udało się pobrać zamówień.", variant: "destructive" });
@@ -86,7 +93,7 @@ const AdminRedemptions = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchRedemptions(); }, []);
+  useEffect(() => { fetchRedemptions(); }, [statusFilter]);
 
   const updateStatus = async (id: string, status: string) => {
     await supabase.from("reward_redemptions").update({ status }).eq("id", id);
@@ -120,6 +127,8 @@ const AdminRedemptions = () => {
     setDetailLoading(false);
   };
 
+  const filteredCount = redemptions.length;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -131,14 +140,31 @@ const AdminRedemptions = () => {
   return (
     <>
       <div className="rounded-xl border bg-card shadow-product">
-        <div className="flex items-center justify-between border-b p-4">
+        <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-            <Gift className="h-5 w-5" /> Zamówienia nagród ({redemptions.length})
+            <Gift className="h-5 w-5" /> Zamówienia nagród ({filteredCount})
           </h2>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-[220px] text-xs">
+                <SelectValue placeholder="Filtruj po statusie" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Wszystkie statusy</SelectItem>
+                <SelectItem value="pending">Oczekuje na potwierdzenie</SelectItem>
+                <SelectItem value="paid-pending">Opłacone — oczekuje</SelectItem>
+                <SelectItem value="paid-accepted">Opłacone — zaakceptowane</SelectItem>
+                <SelectItem value="paid-rejected">Opłacone — odrzucone</SelectItem>
+                <SelectItem value="approved">Zatwierdzone</SelectItem>
+                <SelectItem value="rejected">Odrzucone</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {redemptions.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">Brak zamówień nagród.</div>
+          <div className="p-8 text-center text-muted-foreground">Brak zamówień nagród{statusFilter !== "all" ? " o wybranym statusie" : ""}.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -192,7 +218,6 @@ const AdminRedemptions = () => {
         )}
       </div>
 
-      {/* Order detail dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent>
           <DialogHeader>
