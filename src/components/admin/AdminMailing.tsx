@@ -209,7 +209,12 @@ const AdminMailing = () => {
               </TabsContent>
               <TabsContent value="preview">
                 <div className="rounded-lg border bg-background p-4 min-h-[250px]">
-                  <div dangerouslySetInnerHTML={{ __html: getPreviewHtml() }} />
+                  <iframe
+                    sandbox=""
+                    srcDoc={getPreviewHtml()}
+                    className="w-full min-h-[250px] border-0"
+                    title="Podgląd mailingu"
+                  />
                 </div>
               </TabsContent>
             </Tabs>
