@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Loader2, Gift, CheckCircle, Clock, XCircle, User } from "lucide-react";
+import { Loader2, Gift, CheckCircle, Clock, XCircle, User, Ban } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
 interface RedemptionRow {
@@ -29,7 +30,10 @@ interface UserDetail {
 }
 
 const statusConfig: Record<string, { label: string; icon: React.ReactNode; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "Oczekuje", icon: <Clock className="h-3 w-3" />, variant: "secondary" },
+  pending: { label: "Oczekuje na potwierdzenie", icon: <Clock className="h-3 w-3" />, variant: "secondary" },
+  "paid-pending": { label: "Opłacone — oczekuje", icon: <Clock className="h-3 w-3" />, variant: "outline" },
+  "paid-accepted": { label: "Opłacone — zaakceptowane", icon: <CheckCircle className="h-3 w-3" />, variant: "default" },
+  "paid-rejected": { label: "Opłacone — odrzucone", icon: <Ban className="h-3 w-3" />, variant: "destructive" },
   approved: { label: "Zatwierdzone", icon: <CheckCircle className="h-3 w-3" />, variant: "default" },
   rejected: { label: "Odrzucone", icon: <XCircle className="h-3 w-3" />, variant: "destructive" },
 };
@@ -38,8 +42,6 @@ const AdminRedemptions = () => {
   const { toast } = useToast();
   const [redemptions, setRedemptions] = useState<RedemptionRow[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Detail dialog
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailRedemption, setDetailRedemption] = useState<RedemptionRow | null>(null);
   const [detailUser, setDetailUser] = useState<UserDetail | null>(null);
@@ -102,7 +104,6 @@ const AdminRedemptions = () => {
       .eq("user_id", r.user_id)
       .single();
 
-    // Get email via admin-users edge function data (we already have user_id)
     const { data: { session } } = await supabase.auth.getSession();
     let email = "";
     if (session) {
@@ -168,16 +169,19 @@ const AdminRedemptions = () => {
                         {new Date(r.created_at).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </td>
                       <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
-                        {r.status === "pending" && (
-                          <div className="flex gap-1 justify-end">
-                            <Button size="sm" variant="outline" className="h-7 text-xs border-success text-success" onClick={() => updateStatus(r.id, "approved")}>
-                              <CheckCircle className="mr-1 h-3 w-3" /> Zatwierdź
-                            </Button>
-                            <Button size="sm" variant="outline" className="h-7 text-xs border-destructive text-destructive" onClick={() => updateStatus(r.id, "rejected")}>
-                              <XCircle className="mr-1 h-3 w-3" /> Odrzuć
-                            </Button>
-                          </div>
-                        )}
+                        <Select value={r.status} onValueChange={val => updateStatus(r.id, val)}>
+                          <SelectTrigger className="h-8 w-[200px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Oczekuje na potwierdzenie</SelectItem>
+                            <SelectItem value="paid-pending">Opłacone — oczekuje</SelectItem>
+                            <SelectItem value="paid-accepted">Opłacone — zaakceptowane</SelectItem>
+                            <SelectItem value="paid-rejected">Opłacone — odrzucone</SelectItem>
+                            <SelectItem value="approved">Zatwierdzone</SelectItem>
+                            <SelectItem value="rejected">Odrzucone</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </td>
                     </tr>
                   );
@@ -227,16 +231,22 @@ const AdminRedemptions = () => {
                   <p>{detailUser.country || "Polska"}</p>
                 </div>
               </div>
-              {detailRedemption.status === "pending" && (
-                <div className="flex gap-2">
-                  <Button className="flex-1 bg-success text-success-foreground hover:bg-success/90" onClick={() => { updateStatus(detailRedemption.id, "approved"); setDetailOpen(false); }}>
-                    <CheckCircle className="mr-1 h-4 w-4" /> Zatwierdź
-                  </Button>
-                  <Button variant="destructive" className="flex-1" onClick={() => { updateStatus(detailRedemption.id, "rejected"); setDetailOpen(false); }}>
-                    <XCircle className="mr-1 h-4 w-4" /> Odrzuć
-                  </Button>
-                </div>
-              )}
+              <div className="rounded-lg border p-4 space-y-2">
+                <h3 className="text-sm font-semibold text-foreground">Zmień status</h3>
+                <Select value={detailRedemption.status} onValueChange={val => { updateStatus(detailRedemption.id, val); setDetailOpen(false); }}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Oczekuje na potwierdzenie</SelectItem>
+                    <SelectItem value="paid-pending">Opłacone — oczekuje</SelectItem>
+                    <SelectItem value="paid-accepted">Opłacone — zaakceptowane</SelectItem>
+                    <SelectItem value="paid-rejected">Opłacone — odrzucone</SelectItem>
+                    <SelectItem value="approved">Zatwierdzone</SelectItem>
+                    <SelectItem value="rejected">Odrzucone</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           ) : null}
         </DialogContent>
