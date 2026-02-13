@@ -20,6 +20,7 @@ interface FinancialProduct {
   max_amount: number | null;
   features: string[];
   affiliate_url: string | null;
+  image_url: string | null;
   is_active: boolean;
   category: string;
 }
@@ -111,9 +112,14 @@ const Kredyty = () => {
             {filtered.map(product => (
               <div key={product.id} className="rounded-xl border bg-card p-6 shadow-product transition-all hover:shadow-product-hover">
                 <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-bold text-foreground">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground">{product.provider}</p>
+                  <div className="flex items-center gap-3">
+                    {product.image_url && (
+                      <img src={product.image_url} alt={product.provider} className="h-8 w-8 rounded object-contain bg-white p-0.5" />
+                    )}
+                    <div>
+                      <h3 className="font-bold text-foreground">{product.name}</h3>
+                      <p className="text-sm text-muted-foreground">{product.provider}</p>
+                    </div>
                   </div>
                   {product.interest_rate != null && (
                     <Badge variant="secondary" className="text-accent font-bold">RRSO {product.interest_rate}%</Badge>
