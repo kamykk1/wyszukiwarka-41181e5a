@@ -59,6 +59,30 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_log: {
+        Row: {
+          created_at: string
+          id: string
+          reference_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reference_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reference_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       points_transactions: {
         Row: {
           amount: number
@@ -120,24 +144,30 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          email_notifications: boolean
           id: string
           name: string | null
+          points_threshold: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          email_notifications?: boolean
           id?: string
           name?: string | null
+          points_threshold?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          email_notifications?: boolean
           id?: string
           name?: string | null
+          points_threshold?: number | null
           updated_at?: string
           user_id?: string
         }
