@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Plus, Pencil, Trash2, Save, X, Landmark, CreditCard, PiggyBank, Coins } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Save, X, Landmark, CreditCard, PiggyBank, Coins, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,6 +52,7 @@ interface PartnerIntegration {
   display_name: string;
   enabled: boolean;
   category_points: Record<string, number>;
+  category_api_keys: Record<string, string>;
 }
 
 const emptyForm = {
@@ -76,11 +77,16 @@ const AdminFinancialProducts = () => {
   const [editingPartner, setEditingPartner] = useState<PartnerIntegration | null>(null);
   const [categoryPoints, setCategoryPoints] = useState<Record<string, number>>({});
 
+  // Per-category API keys editing
+  const [keysDialogOpen, setKeysDialogOpen] = useState(false);
+  const [editingKeysPartner, setEditingKeysPartner] = useState<PartnerIntegration | null>(null);
+  const [categoryApiKeys, setCategoryApiKeys] = useState<Record<string, string>>({});
+
   const fetchAll = async () => {
     setLoading(true);
     const [prodRes, partRes] = await Promise.all([
       supabase.from("financial_products").select("*").order("category").order("name"),
-      supabase.from("partner_integrations").select("id, display_name, enabled, category_points"),
+      supabase.from("partner_integrations").select("id, display_name, enabled, category_points, category_api_keys"),
     ]);
     setProducts((prodRes.data as any[]) || []);
     setPartners((partRes.data as any[]) || []);
@@ -192,6 +198,27 @@ const AdminFinancialProducts = () => {
     }
   };
 
+  // Per-category API keys
+  const openKeysDialog = (partner: PartnerIntegration) => {
+    setEditingKeysPartner(partner);
+    setCategoryApiKeys({ ...partner.category_api_keys });
+    setKeysDialogOpen(true);
+  };
+
+  const saveCategoryApiKeys = async () => {
+    if (!editingKeysPartner) return;
+    const { error } = await supabase.from("partner_integrations")
+      .update({ category_api_keys: categoryApiKeys } as any)
+      .eq("id", editingKeysPartner.id);
+    if (error) {
+      toast({ title: "Błąd", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Klucze API per kategoria zapisane ✓" });
+      setKeysDialogOpen(false);
+      fetchAll();
+    }
+  };
+
   const getCategoryLabel = (val: string) => allCategories.find(c => c.value === val)?.label || val;
 
   if (loading) {
@@ -217,9 +244,14 @@ const AdminFinancialProducts = () => {
                       : "Brak ustawień per kategoria"}
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => openPointsDialog(p)}>
-                  <Coins className="mr-1.5 h-3.5 w-3.5" /> Ustaw punkty
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openPointsDialog(p)}>
+                    <Coins className="mr-1.5 h-3.5 w-3.5" /> Punkty
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openKeysDialog(p)}>
+                    <Key className="mr-1.5 h-3.5 w-3.5" /> Klucze API
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -411,6 +443,40 @@ const AdminFinancialProducts = () => {
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setPointsDialogOpen(false)}>Anuluj</Button>
               <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={saveCategoryPoints}>
+                <Save className="mr-1.5 h-3.5 w-3.5" /> Zapisz
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Per-category API Keys Dialog */}
+      <Dialog open={keysDialogOpen} onOpenChange={setKeysDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" /> Klucze API per kategoria — {editingKeysPartner?.display_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            {allCategories.map(cat => (
+              <div key={cat.value} className="space-y-1">
+                <Label className="text-sm">{cat.label}</Label>
+                <Input
+                  type="text"
+                  className="font-mono text-xs"
+                  value={categoryApiKeys[cat.value] ?? ""}
+                  placeholder="Brak klucza"
+                  onChange={e => setCategoryApiKeys(prev => ({
+                    ...prev,
+                    [cat.value]: e.target.value,
+                  }))}
+                />
+              </div>
+            ))}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setKeysDialogOpen(false)}>Anuluj</Button>
+              <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={saveCategoryApiKeys}>
                 <Save className="mr-1.5 h-3.5 w-3.5" /> Zapisz
               </Button>
             </div>
