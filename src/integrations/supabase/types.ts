@@ -59,6 +59,71 @@ export type Database = {
         }
         Relationships: []
       }
+      mailing_campaigns: {
+        Row: {
+          audience: string
+          created_at: string
+          id: string
+          message: string
+          points_reward: number
+          sent_at: string | null
+          sent_by: string | null
+          subject: string
+        }
+        Insert: {
+          audience?: string
+          created_at?: string
+          id?: string
+          message: string
+          points_reward?: number
+          sent_at?: string | null
+          sent_by?: string | null
+          subject: string
+        }
+        Update: {
+          audience?: string
+          created_at?: string
+          id?: string
+          message?: string
+          points_reward?: number
+          sent_at?: string | null
+          sent_by?: string | null
+          subject?: string
+        }
+        Relationships: []
+      }
+      mailing_clicks: {
+        Row: {
+          campaign_id: string
+          clicked_at: string
+          id: string
+          points_awarded: number
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          clicked_at?: string
+          id?: string
+          points_awarded?: number
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          clicked_at?: string
+          id?: string
+          points_awarded?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailing_clicks_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "mailing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_log: {
         Row: {
           created_at: string
@@ -143,31 +208,49 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          city: string | null
+          country: string | null
           created_at: string
           email_notifications: boolean
+          first_name: string | null
           id: string
+          last_name: string | null
           name: string | null
           points_threshold: number | null
+          postal_code: string | null
+          street: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           email_notifications?: boolean
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           name?: string | null
           points_threshold?: number | null
+          postal_code?: string | null
+          street?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           email_notifications?: boolean
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           name?: string | null
           points_threshold?: number | null
+          postal_code?: string | null
+          street?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -384,8 +467,16 @@ export type Database = {
       }
     }
     Functions: {
+      admin_add_points: {
+        Args: { _amount: number; _description: string; _user_id: string }
+        Returns: Json
+      }
       award_click_points: {
         Args: { _product_name: string; _user_id: string }
+        Returns: Json
+      }
+      award_mailing_click_points: {
+        Args: { _campaign_id: string; _user_id: string }
         Returns: Json
       }
       award_purchase_points: {

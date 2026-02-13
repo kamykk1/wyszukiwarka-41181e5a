@@ -7,7 +7,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
-  signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, name: string, extra?: { first_name?: string; last_name?: string; street?: string; city?: string; postal_code?: string }) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -31,7 +31,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      // defer admin check to avoid Supabase deadlock
       setTimeout(() => checkAdminRole(session?.user?.id), 0);
     });
 
@@ -45,15 +44,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, name: string) => {
-    const { error } = await supabase.auth.signUp({
+  const signUp = async (email: string, password: string, name: string, extra?: { first_name?: string; last_name?: string; street?: string; city?: string; postal_code?: string }) => {
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { name },
+        data: { name, ...extra },
         emailRedirectTo: window.location.origin,
       },
     });
+
+    // Update profile with extra fields after signup
+    if (!error && data.user && extra) {
+      await supabase.from("profiles").update({
+        first_name: extra.first_name || null,
+        last_name: extra.last_name || null,
+        street: extra.street || null,
+        city: extra.city || null,
+        postal_code: extra.postal_code || null,
+      }).eq("user_id", data.user.id);
+    }
+
     return { error: error as Error | null };
   };
 
