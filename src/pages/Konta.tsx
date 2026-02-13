@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Landmark, ExternalLink, Star, Loader2, Search } from "lucide-react";
+import { formatDescription } from "@/lib/formatDescription";
 import { useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -126,7 +127,7 @@ const Konta = () => {
                 </div>
                 {product.description && (
                   <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">
-                    {product.description.replace(/<br\s*\/?>/gi, '\n').replace(/\n\s*-/g, '\n• ')}
+                    {formatDescription(product.description)}
                   </p>
                 )}
                 {product.annual_fee != null && (
