@@ -718,14 +718,12 @@ export type Database = {
         Args: { _amount: number; _description: string; _user_id: string }
         Returns: Json
       }
-      award_click_points: {
-        Args: { _product_name: string; _user_id: string }
-        Returns: Json
-      }
-      award_mailing_click_points: {
-        Args: { _campaign_id: string; _user_id: string }
-        Returns: Json
-      }
+      award_click_points:
+        | { Args: { _product_name: string }; Returns: Json }
+        | { Args: { _product_name: string; _user_id: string }; Returns: Json }
+      award_mailing_click_points:
+        | { Args: { _campaign_id: string }; Returns: Json }
+        | { Args: { _campaign_id: string; _user_id: string }; Returns: Json }
       award_partner_task_points:
         | {
             Args: {
@@ -748,10 +746,19 @@ export type Database = {
             }
             Returns: Json
           }
-      award_purchase_points: {
-        Args: { _product_name: string; _store_name: string; _user_id: string }
-        Returns: Json
-      }
+      award_purchase_points:
+        | {
+            Args: { _product_name: string; _store_name: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _product_name: string
+              _store_name: string
+              _user_id: string
+            }
+            Returns: Json
+          }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -759,10 +766,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      redeem_reward: {
-        Args: { _reward_id: string; _user_id: string }
-        Returns: Json
-      }
+      redeem_reward:
+        | { Args: { _reward_id: string }; Returns: Json }
+        | { Args: { _reward_id: string; _user_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
