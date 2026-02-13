@@ -35,6 +35,7 @@ const Konta = () => {
   const [products, setProducts] = useState<FinancialProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [subtitle, setSubtitle] = useState("Porównaj najlepsze konta osobiste, firmowe i oszczędnościowe");
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("typ") || "konta_osobiste";
   const { user } = useAuth();
@@ -54,6 +55,12 @@ const Konta = () => {
     };
     fetchProducts();
   }, [activeTab]);
+
+  useEffect(() => {
+    supabase.from("page_settings").select("subtitle").eq("id", "konta").maybeSingle().then(({ data }) => {
+      if (data?.subtitle) setSubtitle(data.subtitle);
+    });
+  }, []);
 
   const filtered = products.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -79,7 +86,7 @@ const Konta = () => {
             Porównywarka kont bankowych
           </div>
           <h1 className="text-3xl font-black text-foreground md:text-4xl">Konta Bankowe</h1>
-          <p className="mt-2 text-muted-foreground">Porównaj najlepsze konta osobiste, firmowe i oszczędnościowe</p>
+          <p className="mt-2 text-muted-foreground">{subtitle}</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setTab} className="mx-auto mb-8 max-w-lg">
@@ -106,7 +113,7 @@ const Konta = () => {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     {product.image_url && (
-                      <img src={product.image_url} alt={product.provider} className="h-16 w-16 rounded-lg object-contain bg-white p-1 border" />
+                      <img src={product.image_url} alt={product.provider} className="h-20 w-20 rounded-lg object-contain bg-white p-1 border" />
                     )}
                     <div>
                       <h3 className="font-bold text-foreground">{product.name}</h3>

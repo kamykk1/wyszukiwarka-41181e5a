@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Bell, BellOff, Save, Loader2, History, MousePointerClick, ShoppingBag, ArrowDownCircle, ArrowUpCircle, Settings2, MapPin } from "lucide-react";
+import { User, Mail, Bell, BellOff, Save, Loader2, History, MousePointerClick, ShoppingBag, ArrowDownCircle, ArrowUpCircle, Settings2, MapPin, Landmark, CreditCard, PiggyBank } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRewards } from "@/hooks/useRewards";
@@ -111,6 +111,9 @@ const Profile = () => {
 
   const clickPoints = transactions.filter(t => t.type === "click").reduce((sum, t) => sum + t.amount, 0);
   const purchasePoints = transactions.filter(t => t.type === "purchase").reduce((sum, t) => sum + t.amount, 0);
+  const kontaPoints = transactions.filter(t => t.description?.includes("konto:")).reduce((sum, t) => sum + t.amount, 0);
+  const kredytyPoints = transactions.filter(t => t.description?.includes("kredyt:")).reduce((sum, t) => sum + t.amount, 0);
+  const lokatyPoints = transactions.filter(t => t.description?.includes("lokata:")).reduce((sum, t) => sum + t.amount, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -121,7 +124,7 @@ const Profile = () => {
         </h1>
 
         {/* Points summary cards */}
-        <div className="grid gap-4 sm:grid-cols-4 mb-8">
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 mb-4">
           <div className="rounded-xl border bg-card p-4 shadow-product text-center">
             <p className="text-2xl font-extrabold text-accent">{userPoints.balance}</p>
             <p className="text-xs text-muted-foreground mt-1">Dostępne</p>
@@ -137,6 +140,23 @@ const Profile = () => {
           <div className="rounded-xl border bg-card p-4 shadow-product text-center">
             <p className="text-2xl font-extrabold text-success">{purchasePoints}</p>
             <p className="text-xs text-muted-foreground mt-1">Za zakupy</p>
+          </div>
+        </div>
+        <div className="grid gap-4 grid-cols-3 mb-8">
+          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
+            <Landmark className="mx-auto h-5 w-5 text-accent mb-1" />
+            <p className="text-xl font-extrabold text-foreground">{kontaPoints}</p>
+            <p className="text-xs text-muted-foreground mt-1">Za konta</p>
+          </div>
+          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
+            <CreditCard className="mx-auto h-5 w-5 text-accent mb-1" />
+            <p className="text-xl font-extrabold text-foreground">{kredytyPoints}</p>
+            <p className="text-xs text-muted-foreground mt-1">Za kredyty</p>
+          </div>
+          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
+            <PiggyBank className="mx-auto h-5 w-5 text-accent mb-1" />
+            <p className="text-xl font-extrabold text-foreground">{lokatyPoints}</p>
+            <p className="text-xs text-muted-foreground mt-1">Za lokaty</p>
           </div>
         </div>
 
