@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     // Validate partner API key
     const { data: partner, error: partnerErr } = await supabase
       .from("partner_integrations")
-      .select("id, display_name, enabled, task_points")
+      .select("id, display_name, enabled, task_points, category_points")
       .eq("api_key", apiKey)
       .eq("enabled", true)
       .single();
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid or disabled partner API key" }), { status: 403, headers: corsHeaders });
     }
 
-    const { user_email, task_type, external_task_id, product_id } = await req.json();
+    const { user_email, task_type, external_task_id, product_id, category } = await req.json();
 
     if (!user_email || !task_type || !external_task_id) {
       return new Response(
@@ -53,7 +53,16 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "User not found" }), { status: 404, headers: corsHeaders });
     }
 
-    // Award partner task points
+    // Determine points: use category_points if category provided, fallback to task_points
+    let points = partner.task_points;
+    if (category && partner.category_points && typeof partner.category_points === "object") {
+      const catPoints = (partner.category_points as Record<string, number>)[category];
+      if (catPoints !== undefined && catPoints !== null) {
+        points = catPoints;
+      }
+    }
+
+    // Award partner task points with resolved amount
     const { data: result, error: rpcErr } = await supabase.rpc("award_partner_task_points", {
       _user_id: targetUser.id,
       _partner_id: partner.id,
@@ -67,7 +76,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, partner: partner.display_name, ...result }),
+      JSON.stringify({ success: true, partner: partner.display_name, category: category || null, points_awarded: points, ...result }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
