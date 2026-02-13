@@ -17,7 +17,7 @@ async function sendEmail(to: string, subject: string, html: string) {
     method: "POST",
     headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "SmartPrice <onboarding@resend.dev>",
+      from: "NetSzukacz <onboarding@resend.dev>",
       to: [to],
       subject,
       html,
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       : supabaseUrl;
 
     // Default template fallback
-    const template = html_template || `<h2>{{subject}}</h2><p>Cześć {{name}}!</p><div>{{message}}</div>{{click_button}}<hr/><p style="color:#999;font-size:12px;">SmartPrice — porównywarka cen</p>`;
+    const template = html_template || `<h2>{{subject}}</h2><p>Cześć {{name}}!</p><div>{{message}}</div>{{click_button}}<hr/><p style="color:#999;font-size:12px;">NetSzukacz.pl — porównywarka cen i finansów</p>`;
 
     let sent = 0;
     for (const profile of profiles) {

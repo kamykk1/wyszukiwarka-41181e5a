@@ -59,6 +59,80 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_products: {
+        Row: {
+          affiliate_url: string | null
+          annual_fee: number | null
+          category: string
+          created_at: string
+          currency: string | null
+          description: string | null
+          external_id: string | null
+          features: Json | null
+          id: string
+          image_url: string | null
+          interest_rate: number | null
+          is_active: boolean
+          max_amount: number | null
+          min_amount: number | null
+          name: string
+          partner_id: string | null
+          provider: string
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          affiliate_url?: string | null
+          annual_fee?: number | null
+          category: string
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          external_id?: string | null
+          features?: Json | null
+          id?: string
+          image_url?: string | null
+          interest_rate?: number | null
+          is_active?: boolean
+          max_amount?: number | null
+          min_amount?: number | null
+          name: string
+          partner_id?: string | null
+          provider: string
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          affiliate_url?: string | null
+          annual_fee?: number | null
+          category?: string
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          external_id?: string | null
+          features?: Json | null
+          id?: string
+          image_url?: string | null
+          interest_rate?: number | null
+          is_active?: boolean
+          max_amount?: number | null
+          min_amount?: number | null
+          name?: string
+          partner_id?: string | null
+          provider?: string
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_products_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mailing_campaigns: {
         Row: {
           audience: string
@@ -147,6 +221,105 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      partner_integrations: {
+        Row: {
+          api_key: string | null
+          api_secret: string | null
+          base_url: string | null
+          created_at: string
+          description: string | null
+          display_name: string
+          enabled: boolean
+          id: string
+          name: string
+          task_points: number
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string | null
+          api_secret?: string | null
+          base_url?: string | null
+          created_at?: string
+          description?: string | null
+          display_name: string
+          enabled?: boolean
+          id: string
+          name: string
+          task_points?: number
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string | null
+          api_secret?: string | null
+          base_url?: string | null
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          task_points?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      partner_tasks: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string
+          external_task_id: string | null
+          id: string
+          metadata: Json | null
+          partner_id: string
+          points_awarded: number | null
+          product_id: string | null
+          status: string
+          task_type: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string
+          external_task_id?: string | null
+          id?: string
+          metadata?: Json | null
+          partner_id: string
+          points_awarded?: number | null
+          product_id?: string | null
+          status?: string
+          task_type: string
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string
+          external_task_id?: string | null
+          id?: string
+          metadata?: Json | null
+          partner_id?: string
+          points_awarded?: number | null
+          product_id?: string | null
+          status?: string
+          task_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_tasks_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_tasks_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "financial_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       points_transactions: {
         Row: {
@@ -477,6 +650,16 @@ export type Database = {
       }
       award_mailing_click_points: {
         Args: { _campaign_id: string; _user_id: string }
+        Returns: Json
+      }
+      award_partner_task_points: {
+        Args: {
+          _external_task_id: string
+          _partner_id: string
+          _product_id?: string
+          _task_type: string
+          _user_id: string
+        }
         Returns: Json
       }
       award_purchase_points: {

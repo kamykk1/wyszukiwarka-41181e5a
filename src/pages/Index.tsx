@@ -1,4 +1,5 @@
-import { TrendingDown, Store, Zap, Shield } from "lucide-react";
+import { TrendingDown, Store, Zap, Shield, Landmark, CreditCard, PiggyBank } from "lucide-react";
+import { Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import Navbar from "@/components/Navbar";
 import { stores } from "@/data/mockProducts";
@@ -8,6 +9,12 @@ const features = [
   { icon: Store, title: "Wiele sklepów", desc: "Allegro, Amazon, AliExpress, Temu i więcej" },
   { icon: Zap, title: "Błyskawicznie", desc: "Wyniki w ułamku sekundy" },
   { icon: Shield, title: "Bezpiecznie", desc: "Zweryfikowane sklepy partnerskie" },
+];
+
+const financeCards = [
+  { icon: Landmark, title: "Konta bankowe", desc: "Porównaj konta osobiste i oszczędnościowe", path: "/konta", color: "text-blue-500" },
+  { icon: CreditCard, title: "Kredyty", desc: "Znajdź najkorzystniejszy kredyt", path: "/kredyty", color: "text-green-500" },
+  { icon: PiggyBank, title: "Lokaty", desc: "Najwyższe oprocentowanie lokat", path: "/lokaty", color: "text-amber-500" },
 ];
 
 const Index = () => {
@@ -31,7 +38,7 @@ const Index = () => {
             Znajdź najlepszą cenę
           </h1>
           <p className="mx-auto mb-10 max-w-lg text-lg text-primary-foreground/60">
-            Przeszukuj oferty z Allegro, Amazon, AliExpress, Temu i innych popularnych sklepów w jednym miejscu.
+            Przeszukuj oferty z Allegro, Amazon, AliExpress, Temu i innych. Porównuj konta, kredyty i lokaty w jednym miejscu.
           </p>
 
           <SearchBar large />
@@ -51,7 +58,26 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Finance section */}
       <section className="container mx-auto px-4 py-16">
+        <h2 className="mb-2 text-center text-2xl font-bold text-foreground">Porównaj finanse</h2>
+        <p className="mb-8 text-center text-muted-foreground">Konta, kredyty i lokaty — wszystko w jednym miejscu</p>
+        <div className="grid gap-6 sm:grid-cols-3">
+          {financeCards.map(card => (
+            <Link
+              key={card.path}
+              to={card.path}
+              className="group rounded-xl border bg-card p-6 shadow-product transition-all duration-300 hover:shadow-product-hover hover:-translate-y-1"
+            >
+              <card.icon className={`h-10 w-10 ${card.color} mb-3`} />
+              <h3 className="mb-1 font-bold text-foreground group-hover:text-accent transition-colors">{card.title}</h3>
+              <p className="text-sm text-muted-foreground">{card.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="container mx-auto px-4 pb-16">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f, i) => (
             <div
@@ -90,7 +116,7 @@ const Index = () => {
 
       <footer className="border-t bg-card py-8 text-center text-sm text-muted-foreground">
         <div className="container mx-auto px-4">
-          © 2026 SmartPrice — Porównywarka cen. Wszystkie prawa zastrzeżone.
+          © 2026 NetSzukacz.pl — Porównywarka cen i finansów. Wszystkie prawa zastrzeżone.
         </div>
       </footer>
     </div>
