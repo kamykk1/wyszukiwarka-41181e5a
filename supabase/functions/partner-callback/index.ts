@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
       _task_type: task_type,
       _external_task_id: external_task_id,
       _product_id: product_id || null,
+      _override_points: points,
     });
 
     if (rpcErr) {
