@@ -19,7 +19,6 @@ const MailingClick = () => {
 
     const claim = async () => {
       const { data, error } = await supabase.rpc("award_mailing_click_points", {
-        _user_id: user.id,
         _campaign_id: campaignId,
       });
 

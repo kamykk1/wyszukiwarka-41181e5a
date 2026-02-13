@@ -13,7 +13,6 @@ export const useClickPoints = () => {
 
       try {
         const { data, error } = await supabase.rpc("award_click_points", {
-          _user_id: user.id,
           _product_name: productName,
         });
 
@@ -41,7 +40,6 @@ export const useClickPoints = () => {
 
       try {
         const { data, error } = await supabase.rpc("award_purchase_points", {
-          _user_id: user.id,
           _product_name: productName,
           _store_name: storeName,
         });

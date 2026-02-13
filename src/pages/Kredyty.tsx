@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import DOMPurify from "dompurify";
 import { CreditCard, ExternalLink, Calculator, Loader2, Search, TrendingDown } from "lucide-react";
 import { formatDescription } from "@/lib/formatDescription";
 import { useSearchParams } from "react-router-dom";
@@ -83,7 +84,7 @@ const Kredyty = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8 text-center">
           {headerHtml ? (
-            <div dangerouslySetInnerHTML={{ __html: headerHtml }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(headerHtml) }} />
           ) : (
             <>
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent">
