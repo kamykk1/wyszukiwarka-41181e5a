@@ -91,14 +91,6 @@ const Konta = () => {
             ))}
           </TabsList>
         </Tabs>
-
-        <div className="mx-auto mb-8 max-w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Szukaj konta..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
-          </div>
-        </div>
-
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         ) : filtered.length === 0 ? (
