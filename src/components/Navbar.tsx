@@ -32,6 +32,12 @@ const Navbar = () => {
               Nagrody
             </Link>
           </Button>
+          <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+            <Link to="/profile">
+              <User className="mr-1.5 h-4 w-4" />
+              Profil
+            </Link>
+          </Button>
           {isAdmin && (
             <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
               <Link to="/admin">
