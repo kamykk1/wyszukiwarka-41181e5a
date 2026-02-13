@@ -8,6 +8,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import PriceAlertDialog from "@/components/PriceAlertDialog";
 import { useFavorites } from "@/hooks/useFavorites";
 import { usePriceAlerts } from "@/hooks/usePriceAlerts";
+import { useClickPoints } from "@/hooks/useClickPoints";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +35,7 @@ const ProductDetail = () => {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { createAlert, getAlertForProduct } = usePriceAlerts();
   const existingAlert = getAlertForProduct(product.name);
+  const { trackPurchaseClick } = useClickPoints();
 
   return (
     <div className="min-h-screen bg-background">
@@ -159,6 +161,7 @@ const ProductDetail = () => {
                       href={offer.url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => trackPurchaseClick(product.name)}
                       className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
                         isCheapest
                           ? "bg-accent text-accent-foreground hover:bg-accent/90"
