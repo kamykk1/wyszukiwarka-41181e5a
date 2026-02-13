@@ -430,6 +430,7 @@ export type Database = {
           id: string
           last_name: string | null
           name: string | null
+          phone: string | null
           points_threshold: number | null
           postal_code: string | null
           street: string | null
@@ -446,6 +447,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           name?: string | null
+          phone?: string | null
           points_threshold?: number | null
           postal_code?: string | null
           street?: string | null
@@ -462,6 +464,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           name?: string | null
+          phone?: string | null
           points_threshold?: number | null
           postal_code?: string | null
           street?: string | null
