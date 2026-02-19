@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     if (req.method === "GET" && action === "list") {
       const { data, error } = await supabase
         .from("stores")
-        .select("id, name, logo, color, enabled, api_key, api_secret")
+        .select("id, name, logo, color, enabled, api_key, api_secret, partner_source, tradedoubler_program_id, cashback_rate, cashback_type, affiliate_url")
         .order("name");
 
       if (error) throw error;
@@ -61,6 +61,11 @@ Deno.serve(async (req) => {
         enabled: s.enabled,
         has_api_key: !!s.api_key,
         has_api_secret: !!s.api_secret,
+        partner_source: s.partner_source || "manual",
+        tradedoubler_program_id: s.tradedoubler_program_id || null,
+        cashback_rate: s.cashback_rate || null,
+        cashback_type: s.cashback_type || null,
+        affiliate_url: s.affiliate_url || null,
       }));
 
       return new Response(JSON.stringify(masked), {
