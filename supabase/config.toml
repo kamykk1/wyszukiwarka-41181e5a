@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.fetch-partner-offers]
 verify_jwt = false
+
+[functions.tradedoubler-sync]
+verify_jwt = false

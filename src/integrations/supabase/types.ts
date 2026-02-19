@@ -570,37 +570,103 @@ export type Database = {
       }
       stores: {
         Row: {
+          affiliate_url: string | null
           api_key: string | null
           api_secret: string | null
+          cashback_rate: number | null
+          cashback_type: string | null
           color: string
           created_at: string
           enabled: boolean
           id: string
           logo: string
           name: string
+          partner_source: string | null
+          tradedoubler_advertiser_id: string | null
+          tradedoubler_program_id: string | null
           updated_at: string
         }
         Insert: {
+          affiliate_url?: string | null
           api_key?: string | null
           api_secret?: string | null
+          cashback_rate?: number | null
+          cashback_type?: string | null
           color?: string
           created_at?: string
           enabled?: boolean
           id: string
           logo?: string
           name: string
+          partner_source?: string | null
+          tradedoubler_advertiser_id?: string | null
+          tradedoubler_program_id?: string | null
           updated_at?: string
         }
         Update: {
+          affiliate_url?: string | null
           api_key?: string | null
           api_secret?: string | null
+          cashback_rate?: number | null
+          cashback_type?: string | null
           color?: string
           created_at?: string
           enabled?: boolean
           id?: string
           logo?: string
           name?: string
+          partner_source?: string | null
+          tradedoubler_advertiser_id?: string | null
+          tradedoubler_program_id?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tradedoubler_programs: {
+        Row: {
+          advertiser_id: string | null
+          cashback_rate: number | null
+          cashback_type: string | null
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          raw_data: Json | null
+          status: string | null
+          synced_at: string | null
+          url: string | null
+        }
+        Insert: {
+          advertiser_id?: string | null
+          cashback_rate?: number | null
+          cashback_type?: string | null
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id: string
+          logo_url?: string | null
+          name: string
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          advertiser_id?: string | null
+          cashback_rate?: number | null
+          cashback_type?: string | null
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string | null
+          url?: string | null
         }
         Relationships: []
       }
