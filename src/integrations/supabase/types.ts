@@ -754,6 +754,45 @@ export type Database = {
         }
         Relationships: []
       }
+      stores_cashback: {
+        Row: {
+          affiliate_url: string | null
+          cashback_rate: number | null
+          cashback_type: string | null
+          color: string | null
+          enabled: boolean | null
+          id: string | null
+          logo: string | null
+          name: string | null
+          partner_source: string | null
+          tradedoubler_program_id: string | null
+        }
+        Insert: {
+          affiliate_url?: string | null
+          cashback_rate?: number | null
+          cashback_type?: string | null
+          color?: string | null
+          enabled?: boolean | null
+          id?: string | null
+          logo?: string | null
+          name?: string | null
+          partner_source?: string | null
+          tradedoubler_program_id?: string | null
+        }
+        Update: {
+          affiliate_url?: string | null
+          cashback_rate?: number | null
+          cashback_type?: string | null
+          color?: string | null
+          enabled?: boolean | null
+          id?: string | null
+          logo?: string | null
+          name?: string | null
+          partner_source?: string | null
+          tradedoubler_program_id?: string | null
+        }
+        Relationships: []
+      }
       stores_public: {
         Row: {
           color: string | null
