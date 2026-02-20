@@ -7,7 +7,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const TD_BASE = "https://api.tradedoubler.com/1.0";
+// Publisher Management API base (OAuth 2.0)
+const TD_PUB_BASE = "https://publishers.tradedoubler.com/api";
+// Legacy API base (SHA-1 token) — used for conversions/transactions
+const TD_LEGACY_BASE = "https://api.tradedoubler.com/1.0";
 
 async function authenticateAdmin(req: Request, supabaseUrl: string, anonKey: string) {
   const authHeader = req.headers.get("Authorization");
@@ -30,6 +33,89 @@ async function authenticateAdmin(req: Request, supabaseUrl: string, anonKey: str
   return userId;
 }
 
+/**
+ * Fetch OAuth bearer token using client_credentials or password grant
+ * Credentials stored as: TRADEDOUBLER_CLIENT_ID, TRADEDOUBLER_CLIENT_SECRET, TRADEDOUBLER_USERNAME, TRADEDOUBLER_PASSWORD
+ */
+async function getTDAccessToken(): Promise<string | null> {
+  const clientId = Deno.env.get("TRADEDOUBLER_CLIENT_ID");
+  const clientSecret = Deno.env.get("TRADEDOUBLER_CLIENT_SECRET");
+  const username = Deno.env.get("TRADEDOUBLER_USERNAME");
+  const password = Deno.env.get("TRADEDOUBLER_PASSWORD");
+
+  if (!clientId || !clientSecret) return null;
+
+  const basicAuth = btoa(`${clientId}:${clientSecret}`);
+  
+  const body = username && password
+    ? `grant_type=password&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&scope=read`
+    : `grant_type=client_credentials&scope=read`;
+
+  const res = await fetch("https://publishers.tradedoubler.com/uaa/oauth/token", {
+    method: "POST",
+    headers: {
+      "Authorization": `Basic ${basicAuth}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("OAuth token error:", res.status, err);
+    return null;
+  }
+
+  const data = await res.json();
+  return data.access_token || null;
+}
+
+/**
+ * Fetch programs from Publisher Management API (OAuth 2.0)
+ */
+async function fetchProgramsOAuth(accessToken: string) {
+  const res = await fetch(`${TD_PUB_BASE}/programs?limit=100&offset=0`, {
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error("TD Publisher API error:", res.status, body);
+    throw new Error(`Tradedoubler Publisher API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  // Response may have .programs or be an array or have pagination
+  const programs = Array.isArray(data) ? data : (data.programs || data.items || data.data || []);
+  return programs;
+}
+
+/**
+ * Fetch transactions from Publisher Management API (OAuth 2.0)
+ */
+async function fetchTransactionsOAuth(accessToken: string, fromDate?: string) {
+  const params = new URLSearchParams({ limit: "100", offset: "0" });
+  if (fromDate) params.set("fromDate", fromDate);
+  
+  const res = await fetch(`${TD_PUB_BASE}/transactions?${params}`, {
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error("TD transactions error:", res.status, body);
+    throw new Error(`Tradedoubler transactions API error: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -39,13 +125,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const tdToken = Deno.env.get("TRADEDOUBLER_TOKEN");
-
-    if (!tdToken) {
-      return new Response(JSON.stringify({ error: "TRADEDOUBLER_TOKEN not configured" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const legacyToken = Deno.env.get("TRADEDOUBLER_TOKEN");
 
     await authenticateAdmin(req, supabaseUrl, anonKey);
     const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -53,57 +133,122 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
 
-    // GET programs: fetch from Tradedoubler and cache
+    // ─── Sync programs from Tradedoubler ───────────────────────────────────
     if (req.method === "GET" && action === "programs") {
-      const tdUrl = `${TD_BASE}/programs.json?token=${tdToken}&orderBy=name&freeText=`;
-      console.log("Fetching TD programs...");
+      
+      // Try OAuth 2.0 first (Publisher Management API)
+      const accessToken = await getTDAccessToken();
+      
+      if (accessToken) {
+        console.log("Using OAuth 2.0 Publisher Management API...");
+        const programs = await fetchProgramsOAuth(accessToken);
+        
+        const mapped = programs.map((p: any) => ({
+          id: String(p.id || p.programId || p.program_id),
+          name: p.name || p.programName || "Unknown",
+          advertiser_id: String(p.advertiserId || p.advertiser_id || p.id || ""),
+          logo_url: p.logoUrl || p.logo_url || p.logo || null,
+          cashback_rate: parseFloat(String(p.commissionRate || p.commission_rate || p.defaultCommission || "0")) || null,
+          cashback_type: p.commissionType || "percent",
+          currency: p.currency || "PLN",
+          status: p.status || p.statusId || "active",
+          category: p.category || p.categoryName || null,
+          url: p.url || p.websiteUrl || p.website || null,
+          raw_data: p,
+          synced_at: new Date().toISOString(),
+        }));
 
-      const tdRes = await fetch(tdUrl, {
-        headers: { "Accept": "application/json" },
-      });
+        if (mapped.length > 0) {
+          const { error: upsertErr } = await supabase
+            .from("tradedoubler_programs")
+            .upsert(mapped, { onConflict: "id" });
+          if (upsertErr) console.error("Upsert error:", upsertErr);
+        }
 
-      if (!tdRes.ok) {
-        const body = await tdRes.text();
-        console.error("TD API error:", tdRes.status, body);
-        return new Response(JSON.stringify({ error: `Tradedoubler API error: ${tdRes.status}`, details: body }), {
-          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ programs: mapped, count: mapped.length, source: "oauth" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const tdData = await tdRes.json();
-      const programs = Array.isArray(tdData) ? tdData : (tdData.programs || tdData.data || []);
+      // Fallback: legacy token not available for /programs — return helpful error
+      if (!legacyToken) {
+        return new Response(JSON.stringify({
+          error: "Brak danych uwierzytelniających Tradedoubler",
+          details: "Skonfiguruj TRADEDOUBLER_CLIENT_ID + TRADEDOUBLER_CLIENT_SECRET (z publishers.tradedoubler.com/en/uaa/clients) aby pobierać programy przez nowe API.",
+          programs: [],
+          count: 0,
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Fallback: try legacy API for connected programs (only works for some endpoints)
+      console.log("Trying legacy API with token...");
+      const legacyRes = await fetch(`${TD_LEGACY_BASE}/programs.json?token=${legacyToken}`, {
+        headers: { "Accept": "application/json" },
+      });
+
+      if (!legacyRes.ok) {
+        const body = await legacyRes.text();
+        console.error("Legacy API error:", legacyRes.status, body);
+        return new Response(JSON.stringify({
+          error: `Tradedoubler API error: ${legacyRes.status}`,
+          details: body,
+          hint: "Aby pobrać listę programów, skonfiguruj TRADEDOUBLER_CLIENT_ID i TRADEDOUBLER_CLIENT_SECRET w panelu wydawcy Tradedoubler (publishers.tradedoubler.com/en/uaa/clients).",
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const legacyData = await legacyRes.json();
+      const programs = Array.isArray(legacyData) ? legacyData : (legacyData.programs || legacyData.data || []);
 
       const mapped = programs.map((p: any) => ({
-        id: String(p.id || p.programId || p.program_id),
-        name: p.name || p.programName || p.program_name || "Unknown",
-        advertiser_id: String(p.advertiserId || p.advertiser_id || ""),
-        logo_url: p.logoUrl || p.logo_url || p.logo || null,
-        cashback_rate: parseFloat(p.commissionRate || p.commission_rate || p.cr || "0") || null,
-        cashback_type: p.commissionType || p.commission_type || "percent",
+        id: String(p.id || p.programId),
+        name: p.name || p.programName || "Unknown",
+        advertiser_id: String(p.advertiserId || ""),
+        logo_url: p.logoUrl || null,
+        cashback_rate: parseFloat(String(p.commissionRate || "0")) || null,
+        cashback_type: p.commissionType || "percent",
         currency: p.currency || "PLN",
         status: p.status || "active",
-        category: p.category || p.categoryName || null,
-        url: p.url || p.websiteUrl || null,
+        category: p.category || null,
+        url: p.url || null,
         raw_data: p,
         synced_at: new Date().toISOString(),
       }));
 
       if (mapped.length > 0) {
-        const { error: upsertErr } = await supabase
-          .from("tradedoubler_programs")
-          .upsert(mapped, { onConflict: "id" });
-
-        if (upsertErr) {
-          console.error("Upsert error:", upsertErr);
-        }
+        await supabase.from("tradedoubler_programs").upsert(mapped, { onConflict: "id" });
       }
 
-      return new Response(JSON.stringify({ programs: mapped, count: mapped.length }), {
+      return new Response(JSON.stringify({ programs: mapped, count: mapped.length, source: "legacy" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // GET cached programs from DB
+    // ─── Sync transactions / pull new commissions ──────────────────────────
+    if (req.method === "GET" && action === "sync-transactions") {
+      const accessToken = await getTDAccessToken();
+      if (!accessToken) {
+        return new Response(JSON.stringify({ error: "OAuth credentials not configured" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Fetch last 7 days of transactions
+      const fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const txData = await fetchTransactionsOAuth(accessToken, fromDate);
+      const transactions = Array.isArray(txData) ? txData : (txData.transactions || txData.items || []);
+
+      return new Response(JSON.stringify({ transactions, count: transactions.length }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Cached programs from DB ───────────────────────────────────────────
     if (req.method === "GET" && action === "cached-programs") {
       const { data, error } = await supabase
         .from("tradedoubler_programs")
@@ -117,7 +262,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // POST: assign Tradedoubler program to a store
+    // ─── Assign Tradedoubler program to store ──────────────────────────────
     if (req.method === "POST" && action === "assign") {
       const body = await req.json();
       const { store_id, program_id } = body;
@@ -129,7 +274,6 @@ Deno.serve(async (req) => {
       }
 
       if (!program_id) {
-        // Unassign - revert to manual
         const { error } = await supabase
           .from("stores")
           .update({
@@ -147,7 +291,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Fetch program details
       const { data: prog } = await supabase
         .from("tradedoubler_programs")
         .select("*")
