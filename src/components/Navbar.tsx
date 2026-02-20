@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, User, LogIn, LogOut, Menu, Heart, Gift, Trophy, Landmark, CreditCard, PiggyBank } from "lucide-react";
+import { Search, User, LogIn, LogOut, Menu, Heart, Gift, Trophy, Landmark, CreditCard, PiggyBank, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -29,6 +29,12 @@ const Navbar = () => {
         <Link to="/lokaty">
           <PiggyBank className="mr-1.5 h-4 w-4" />
           Lokaty
+        </Link>
+      </Button>
+      <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+        <Link to="/cashback">
+          <Percent className="mr-1.5 h-4 w-4" />
+          Cashback
         </Link>
       </Button>
       <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
