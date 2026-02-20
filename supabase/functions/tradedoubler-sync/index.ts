@@ -7,8 +7,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Publisher Management API base (OAuth 2.0)
-const TD_PUB_BASE = "https://publishers.tradedoubler.com/api";
+// Publisher Management API base (OAuth 2.0) — connect.tradedoubler.com is the correct base
+const TD_PUB_BASE = "https://connect.tradedoubler.com/publisher";
 // Legacy API base (SHA-1 token) — used for conversions/transactions
 const TD_LEGACY_BASE = "https://api.tradedoubler.com/1.0";
 
@@ -90,24 +90,64 @@ async function getTDAccessToken(): Promise<string | null> {
 /**
  * Fetch programs from Publisher Management API (OAuth 2.0)
  */
-async function fetchProgramsOAuth(accessToken: string) {
-  const res = await fetch(`${TD_PUB_BASE}/programs?limit=100&offset=0`, {
+async function fetchSources(accessToken: string): Promise<any[]> {
+  const res = await fetch(`${TD_PUB_BASE}/sources?limit=100&offset=0`, {
     headers: {
       "Authorization": `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
+      "Accept": "application/json",
     },
   });
-
   if (!res.ok) {
     const body = await res.text();
-    console.error("TD Publisher API error:", res.status, body);
-    throw new Error(`Tradedoubler Publisher API error: ${res.status}`);
+    console.log("Sources endpoint:", res.status, body.substring(0, 200));
+    return [];
+  }
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.items || data.sources || []);
+}
+
+async function fetchProgramsOAuth(accessToken: string) {
+  // First get sources (required by programs endpoint)
+  const sources = await fetchSources(accessToken);
+  console.log(`Found ${sources.length} sources`);
+
+  if (sources.length === 0) {
+    throw new Error("Nie znaleziono żadnych źródeł (sources) w koncie Tradedoubler. Dodaj stronę wydawcy w panelu TD.");
   }
 
-  const data = await res.json();
-  // Response may have .programs or be an array or have pagination
-  const programs = Array.isArray(data) ? data : (data.programs || data.items || data.data || []);
-  return programs;
+  const allPrograms: any[] = [];
+
+  for (const source of sources) {
+    const sourceId = source.id || source.sourceId;
+    console.log(`Fetching programs for source ${sourceId} (${source.name || ""})`);
+
+    const url = `${TD_PUB_BASE}/programs?sourceId=${sourceId}&limit=100&offset=0`;
+    const res = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`Programs for source ${sourceId}: ${res.status}`, body.substring(0, 200));
+      continue;
+    }
+
+    const data = await res.json();
+    const programs = Array.isArray(data) ? data : (data.items || data.programs || data.data || []);
+    allPrograms.push(...programs);
+  }
+
+  // Deduplicate by program ID
+  const seen = new Set<string>();
+  return allPrograms.filter(p => {
+    const id = String(p.id || p.programId);
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 /**
