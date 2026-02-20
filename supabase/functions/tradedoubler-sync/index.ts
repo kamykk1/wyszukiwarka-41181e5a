@@ -46,28 +46,45 @@ async function getTDAccessToken(): Promise<string | null> {
   if (!clientId || !clientSecret) return null;
 
   const basicAuth = btoa(`${clientId}:${clientSecret}`);
-  
-  const body = username && password
+
+  // Tradedoubler Publisher API requires password grant (username + password)
+  const grantBody = username && password
     ? `grant_type=password&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&scope=read`
     : `grant_type=client_credentials&scope=read`;
 
-  const res = await fetch("https://publishers.tradedoubler.com/uaa/oauth/token", {
-    method: "POST",
-    headers: {
-      "Authorization": `Basic ${basicAuth}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
-  });
+  // Try multiple known OAuth endpoints
+  const endpoints = [
+    "https://publishers.tradedoubler.com/en/uaa/oauth/token",
+    "https://publishers.tradedoubler.com/uaa/token",
+    "https://connect.tradedoubler.com/uaa/oauth/token",
+  ];
 
-  if (!res.ok) {
-    const err = await res.text();
-    console.error("OAuth token error:", res.status, err);
-    return null;
+  for (const endpoint of endpoints) {
+    try {
+      console.log("Trying OAuth endpoint:", endpoint);
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${basicAuth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: grantBody,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        console.log("OAuth success at:", endpoint);
+        return data.access_token || null;
+      }
+
+      const errText = await res.text();
+      console.log(`OAuth ${endpoint}: ${res.status}`, errText.substring(0, 100));
+    } catch (e) {
+      console.log(`OAuth endpoint ${endpoint} failed:`, e);
+    }
   }
 
-  const data = await res.json();
-  return data.access_token || null;
+  return null;
 }
 
 /**
@@ -132,6 +149,53 @@ Deno.serve(async (req) => {
 
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
+
+    // ─── Test OAuth connection ─────────────────────────────────────────────
+    if (req.method === "GET" && action === "test-oauth") {
+      const clientId = Deno.env.get("TRADEDOUBLER_CLIENT_ID");
+      const clientSecret = Deno.env.get("TRADEDOUBLER_CLIENT_SECRET");
+      const tdToken = Deno.env.get("TRADEDOUBLER_TOKEN");
+      const username = Deno.env.get("TRADEDOUBLER_USERNAME");
+      const password = Deno.env.get("TRADEDOUBLER_PASSWORD");
+
+      const results: any[] = [];
+      const endpoints = [
+        "https://publishers.tradedoubler.com/en/uaa/oauth/token",
+        "https://publishers.tradedoubler.com/uaa/token",
+        "https://connect.tradedoubler.com/uaa/oauth/token",
+      ];
+
+      if (clientId && clientSecret) {
+        const basicAuth = btoa(`${clientId}:${clientSecret}`);
+        const grantBody = username && password
+          ? `grant_type=password&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&scope=read`
+          : `grant_type=client_credentials&scope=read`;
+
+        for (const endpoint of endpoints) {
+          try {
+            const r = await fetch(endpoint, {
+              method: "POST",
+              headers: { "Authorization": `Basic ${basicAuth}`, "Content-Type": "application/x-www-form-urlencoded" },
+              body: grantBody,
+            });
+            const body = await r.text();
+            results.push({ endpoint, status: r.status, response: body.substring(0, 300) });
+            if (r.ok) break;
+          } catch (e) {
+            results.push({ endpoint, error: String(e) });
+          }
+        }
+      }
+
+      return new Response(JSON.stringify({
+        has_client_id: !!clientId,
+        has_client_secret: !!clientSecret,
+        has_legacy_token: !!tdToken,
+        has_username: !!username,
+        has_password: !!password,
+        oauth_tests: results,
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // ─── Sync programs from Tradedoubler ───────────────────────────────────
     if (req.method === "GET" && action === "programs") {
