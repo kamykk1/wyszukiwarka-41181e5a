@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, Save, Loader2, RefreshCw, Link2, Link2Off, Percent } from "lucide-react";
+import { Settings, Save, Loader2, RefreshCw, Link2, Link2Off, Percent, Copy, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -170,6 +170,13 @@ const AdminStores = () => {
     );
   }
 
+  const callbackUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tradedoubler-callback`;
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Skopiowano do schowka ✓" });
+  };
+
   return (
     <div className="space-y-4">
       {/* Tradedoubler sync panel */}
@@ -178,12 +185,12 @@ const AdminStores = () => {
           <div>
             <h2 className="text-base font-bold text-foreground flex items-center gap-2">
               <span className="inline-block w-2 h-2 rounded-full bg-primary"></span>
-              Tradedoubler
+              Tradedoubler — Synchronizacja programów
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               {tdPrograms.length > 0
                 ? `${tdPrograms.length} programów w bazie · ostatnia sync: ${new Date(tdPrograms[0]?.synced_at).toLocaleString("pl-PL")}`
-                : 'Kliknij "Synchronizuj" aby pobrać programy partnerskie'}
+                : 'Wymaga TRADEDOUBLER_CLIENT_ID + TRADEDOUBLER_CLIENT_SECRET (OAuth 2.0)'}
             </p>
           </div>
           <Button
@@ -197,8 +204,51 @@ const AdminStores = () => {
             Synchronizuj
           </Button>
         </div>
+
+        {/* OAuth setup info */}
+        <div className="mt-3 space-y-2">
+          <div className="rounded-lg bg-muted/50 border px-3 py-2.5 text-xs space-y-1.5">
+            <p className="font-medium text-foreground flex items-center gap-1.5">
+              <Info className="h-3.5 w-3.5 text-accent" />
+              Wymagana konfiguracja OAuth 2.0
+            </p>
+            <p className="text-muted-foreground">
+              Aby pobierać programy, skonfiguruj <strong>TRADEDOUBLER_CLIENT_ID</strong> i <strong>TRADEDOUBLER_CLIENT_SECRET</strong> jako sekrety projektu.
+              Utwórz klienta OAuth na:{" "}
+              <a href="https://publishers.tradedoubler.com/en/uaa/clients" target="_blank" rel="noopener" className="text-accent underline">
+                publishers.tradedoubler.com/en/uaa/clients
+              </a>
+            </p>
+          </div>
+
+          {/* Callback URL */}
+          <div className="rounded-lg bg-muted/50 border px-3 py-2.5 text-xs">
+            <p className="font-medium text-foreground mb-1.5 flex items-center gap-1.5">
+              <Link2 className="h-3.5 w-3.5 text-accent" />
+              URL Callbacku transakcji (Postback URL)
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs bg-background border rounded px-2 py-1 font-mono break-all">
+                {callbackUrl}
+              </code>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 shrink-0"
+                onClick={() => copyToClipboard(callbackUrl)}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <p className="text-muted-foreground mt-1.5">
+              Wklej ten URL w panelu Tradedoubler jako Postback URL.
+              W linku afiliacyjnym przekazuj email użytkownika jako parametr <code className="bg-background px-1 rounded">epi1</code>.
+            </p>
+          </div>
+        </div>
+
         {tdPrograms.length > 0 && (
-          <div className="text-xs text-muted-foreground bg-muted rounded-lg px-3 py-2">
+          <div className="mt-2 text-xs text-muted-foreground bg-muted rounded-lg px-3 py-2">
             Przypisz programy Tradedoubler do sklepów poniżej. Cashback rate zostanie automatycznie zaktualizowany.
           </div>
         )}

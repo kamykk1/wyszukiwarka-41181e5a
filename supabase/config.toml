@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.tradedoubler-sync]
 verify_jwt = false
+
+[functions.tradedoubler-callback]
+verify_jwt = false
+
+[functions.admin-stores]
+verify_jwt = false
