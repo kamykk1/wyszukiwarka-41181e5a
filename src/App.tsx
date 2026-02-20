@@ -14,7 +14,7 @@ import Favorites from "./pages/Favorites";
 import Rewards from "./pages/Rewards";
 import Profile from "./pages/Profile";
 import Leaderboard from "./pages/Leaderboard";
-
+import Cashback from "./pages/Cashback";
 import MailingClick from "./pages/MailingClick";
 import Konta from "./pages/Konta";
 import Kredyty from "./pages/Kredyty";
@@ -41,6 +41,7 @@ const App = () => (
             <Route path="/rewards" element={<Rewards />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/cashback" element={<Cashback />} />
             
             <Route path="/mailing-click" element={<MailingClick />} />
             <Route path="/konta" element={<Konta />} />

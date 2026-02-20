@@ -1,4 +1,4 @@
-import { TrendingDown, Store, Zap, Shield, Landmark, CreditCard, PiggyBank } from "lucide-react";
+import { TrendingDown, Store, Zap, Shield, Landmark, CreditCard, PiggyBank, Percent } from "lucide-react";
 import { Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import Navbar from "@/components/Navbar";
@@ -15,6 +15,7 @@ const financeCards = [
   { icon: Landmark, title: "Konta Bankowe", desc: "Porównaj konta osobiste, firmowe i oszczędnościowe", path: "/konta", color: "text-blue-500" },
   { icon: CreditCard, title: "Kredyty", desc: "Kredyty gotówkowe, konsolidacyjne i hipoteczne", path: "/kredyty", color: "text-green-500" },
   { icon: PiggyBank, title: "Lokaty", desc: "Najwyższe oprocentowanie lokat", path: "/lokaty", color: "text-amber-500" },
+  { icon: Percent, title: "Cashback", desc: "Zarabiaj procenty od zakupów w sklepach partnerskich", path: "/cashback", color: "text-accent" },
 ];
 
 const Index = () => {
