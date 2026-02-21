@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     if (req.method === "GET" && action === "list") {
       const { data, error } = await supabase
         .from("partner_integrations")
-        .select("id, name, display_name, enabled, base_url, task_points, description, category_api_keys, category_points")
+        .select("id, name, display_name, enabled, base_url, task_points, description, category_api_keys, category_points, category_calc_mode")
         .order("display_name");
 
       if (error) throw error;
@@ -62,10 +62,11 @@ Deno.serve(async (req) => {
         }
         return {
           ...p,
-          has_api_key: true, // if it's in the DB it was set via this function
-          category_api_keys: undefined, // never send raw keys
+          has_api_key: true,
+          category_api_keys: undefined,
           category_api_keys_configured: maskedCatKeys,
           category_points: p.category_points,
+          category_calc_mode: p.category_calc_mode || {},
         };
       });
 
@@ -77,7 +78,7 @@ Deno.serve(async (req) => {
     // POST: Update partner settings (including credentials)
     if (req.method === "POST" && action === "update") {
       const body = await req.json();
-      const { id, api_key, api_secret, task_points, base_url, category_api_keys, category_points } = body;
+      const { id, api_key, api_secret, task_points, base_url, category_api_keys, category_points, category_calc_mode } = body;
 
       if (!id) {
         return new Response(JSON.stringify({ error: "Missing partner id" }), {
@@ -92,6 +93,7 @@ Deno.serve(async (req) => {
       if (base_url !== undefined) updateData.base_url = base_url || null;
       if (category_api_keys !== undefined) updateData.category_api_keys = category_api_keys;
       if (category_points !== undefined) updateData.category_points = category_points;
+      if (category_calc_mode !== undefined) updateData.category_calc_mode = category_calc_mode;
 
       const { error } = await supabase
         .from("partner_integrations")

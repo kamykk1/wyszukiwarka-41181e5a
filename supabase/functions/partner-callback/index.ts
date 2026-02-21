@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const { user_email, task_type, external_task_id, product_id, category } = await req.json();
+    const { user_email, task_type, external_task_id, product_id, category, amount } = await req.json();
 
     if (!user_email || !task_type || !external_task_id) {
       return new Response(
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     // Fetch all enabled partners to match API key
     const { data: partners, error: partnersErr } = await supabase
       .from("partner_integrations")
-      .select("id, display_name, enabled, task_points, category_points, api_key, category_api_keys")
+      .select("id, display_name, enabled, task_points, category_points, api_key, category_api_keys, category_calc_mode")
       .eq("enabled", true);
 
     if (partnersErr || !partners || partners.length === 0) {
@@ -90,11 +90,25 @@ Deno.serve(async (req) => {
     }
 
     // Determine points: category_points > task_points
-    let points = matchedPartner.task_points;
+    let basePoints = matchedPartner.task_points;
     if (matchedCategory && matchedPartner.category_points && typeof matchedPartner.category_points === "object") {
       const catPoints = (matchedPartner.category_points as Record<string, number>)[matchedCategory];
       if (catPoints !== undefined && catPoints !== null) {
-        points = catPoints;
+        basePoints = catPoints;
+      }
+    }
+
+    // Apply calculation mode: "flat" (default) or "per_1000"
+    let points = basePoints;
+    const calcModes = (matchedPartner.category_calc_mode || {}) as Record<string, string>;
+    const calcMode = matchedCategory ? (calcModes[matchedCategory] || "flat") : "flat";
+
+    if (calcMode === "per_1000" && amount) {
+      const numAmount = Number(amount);
+      if (numAmount > 0) {
+        // Points = basePoints * (amount / 1000), rounded down
+        points = Math.floor(basePoints * (numAmount / 1000));
+        if (points < 1) points = 1; // minimum 1 point
       }
     }
 
@@ -117,6 +131,8 @@ Deno.serve(async (req) => {
         success: true,
         partner: matchedPartner.display_name,
         category: matchedCategory,
+        calc_mode: calcMode,
+        amount: amount || null,
         points_awarded: points,
         ...result,
       }),
