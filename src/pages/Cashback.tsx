@@ -62,9 +62,8 @@ const Cashback = () => {
     const fetchStores = async () => {
       setLoading(true);
       const { data, error } = await supabase
-        .from("stores")
+        .from("stores_public")
         .select("id, name, logo, color, cashback_rate, cashback_type, affiliate_url, partner_source")
-        .eq("enabled", true)
         .not("cashback_rate", "is", null)
         .gt("cashback_rate", 0)
         .order("cashback_rate", { ascending: false });
