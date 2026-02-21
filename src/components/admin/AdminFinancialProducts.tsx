@@ -45,6 +45,7 @@ interface Product {
   is_active: boolean;
   partner_id: string | null;
   source: string | null;
+  points_reward: number | null;
 }
 
 interface PartnerIntegration {
@@ -59,6 +60,7 @@ const emptyForm = {
   name: "", provider: "", category: "konta_osobiste", description: "",
   interest_rate: "", annual_fee: "", min_amount: "", max_amount: "",
   features: "", affiliate_url: "", image_url: "", is_active: true, partner_id: "",
+  points_reward: "",
 };
 
 const AdminFinancialProducts = () => {
@@ -123,6 +125,7 @@ const AdminFinancialProducts = () => {
       image_url: p.image_url || "",
       is_active: p.is_active,
       partner_id: p.partner_id || "",
+      points_reward: p.points_reward?.toString() || "",
     });
     setDialogOpen(true);
   };
@@ -147,6 +150,7 @@ const AdminFinancialProducts = () => {
       image_url: form.image_url || null,
       is_active: form.is_active,
       partner_id: form.partner_id || null,
+      points_reward: form.points_reward ? parseInt(form.points_reward) : null,
     };
 
     let error;
@@ -287,6 +291,7 @@ const AdminFinancialProducts = () => {
                   <th className="px-4 py-3">Dostawca</th>
                   <th className="px-4 py-3">Kategoria</th>
                   <th className="px-4 py-3">Oprocentowanie</th>
+                  <th className="px-4 py-3">Punkty</th>
                   <th className="px-4 py-3">Aktywna</th>
                   <th className="px-4 py-3 text-right">Akcje</th>
                 </tr>
@@ -300,6 +305,11 @@ const AdminFinancialProducts = () => {
                       <Badge variant="outline" className="text-xs">{getCategoryLabel(p.category)}</Badge>
                     </td>
                     <td className="px-4 py-3 text-sm text-foreground">{p.interest_rate != null ? `${p.interest_rate}%` : "—"}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {(p as any).points_reward != null
+                        ? <Badge className="bg-accent/10 text-accent text-xs">{(p as any).points_reward} pkt</Badge>
+                        : <span className="text-muted-foreground text-xs">domyślne</span>}
+                    </td>
                     <td className="px-4 py-3">
                       <Switch checked={p.is_active} onCheckedChange={() => toggleActive(p.id, p.is_active)} />
                     </td>
@@ -386,6 +396,19 @@ const AdminFinancialProducts = () => {
                 <Label>URL obrazka</Label>
                 <Input value={form.image_url} onChange={e => setForm(prev => ({ ...prev, image_url: e.target.value }))} className="mt-1" />
               </div>
+            </div>
+            <div>
+              <Label>Punkty za produkt</Label>
+              <Input
+                type="number"
+                min={0}
+                max={1000000}
+                value={form.points_reward}
+                onChange={e => setForm(prev => ({ ...prev, points_reward: e.target.value }))}
+                className="mt-1"
+                placeholder="Puste = domyślne z kategorii"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Jeśli puste, zostaną użyte punkty z konfiguracji kategorii partnera.</p>
             </div>
             <div>
               <Label>API Partner</Label>
