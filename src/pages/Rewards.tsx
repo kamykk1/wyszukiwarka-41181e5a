@@ -1,4 +1,4 @@
-import { Gift, Star, History, Loader2, MousePointerClick, ShoppingBag, ArrowDownCircle, ArrowUpCircle, Settings2 } from "lucide-react";
+import { Gift, Star, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRewards } from "@/hooks/useRewards";
@@ -6,17 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 
-const typeConfig: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  click: { label: "Kliknięcie", icon: <MousePointerClick className="h-4 w-4" />, color: "text-blue-500" },
-  purchase: { label: "Zakup", icon: <ShoppingBag className="h-4 w-4" />, color: "text-success" },
-  earned: { label: "Zdobyte", icon: <ArrowUpCircle className="h-4 w-4" />, color: "text-success" },
-  redeemed: { label: "Wydane", icon: <ArrowDownCircle className="h-4 w-4" />, color: "text-destructive" },
-  adjusted: { label: "Korekta", icon: <Settings2 className="h-4 w-4" />, color: "text-muted-foreground" },
-};
-
 const Rewards = () => {
   const { user } = useAuth();
-  const { rewards, userPoints, redemptions, transactions, loading, redeemReward } = useRewards();
+  const { rewards, userPoints, redemptions, loading, redeemReward } = useRewards();
 
   if (!user) {
     return (
@@ -62,7 +54,7 @@ const Rewards = () => {
             </div>
             <div>
               <p className="text-3xl font-extrabold text-foreground">{userPoints.total_earned}</p>
-              <p className="text-sm text-muted-foreground">Łącznie zdobyte</p>
+              <p className="text-sm text-muted-foreground">Łącznie zebrane</p>
             </div>
           </div>
         </div>
@@ -103,49 +95,6 @@ const Rewards = () => {
               </div>
             ))}
           </div>
-        )}
-
-
-        {/* Points transaction history */}
-        {transactions.length > 0 && (
-          <>
-            <h2 className="text-xl font-bold text-foreground mb-4 mt-8 flex items-center gap-2">
-              <History className="h-5 w-5" /> Historia Punktów
-            </h2>
-            <div className="rounded-xl border bg-card shadow-product overflow-hidden mb-8">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b text-left text-xs font-medium text-muted-foreground">
-                    <th className="px-4 py-3">Typ</th>
-                    <th className="px-4 py-3">Opis</th>
-                    <th className="px-4 py-3 text-right">Punkty</th>
-                    <th className="px-4 py-3">Data</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map(t => {
-                    const cfg = typeConfig[t.type] || typeConfig.adjusted;
-                    return (
-                      <tr key={t.id} className="border-b last:border-0">
-                        <td className="px-4 py-3">
-                          <span className={`flex items-center gap-1.5 text-sm font-medium ${cfg.color}`}>
-                            {cfg.icon} {cfg.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-foreground">{t.description || "—"}</td>
-                        <td className={`px-4 py-3 text-sm font-bold text-right ${t.amount > 0 ? "text-success" : "text-destructive"}`}>
-                          {t.amount > 0 ? "+" : ""}{t.amount}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {new Date(t.created_at).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
         )}
 
         {/* Redemption history */}

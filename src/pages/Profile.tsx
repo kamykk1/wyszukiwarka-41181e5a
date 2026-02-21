@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Bell, BellOff, Save, Loader2, History, MousePointerClick, ShoppingBag, ArrowDownCircle, ArrowUpCircle, Settings2, MapPin, Landmark, CreditCard, PiggyBank } from "lucide-react";
+import { User, Mail, Bell, BellOff, Save, Loader2, History, MousePointerClick, ShoppingBag, ArrowDownCircle, ArrowUpCircle, Settings2, MapPin, Landmark, CreditCard, PiggyBank, AtSign, Clock } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRewards } from "@/hooks/useRewards";
@@ -20,10 +20,19 @@ const typeConfig: Record<string, { label: string; icon: React.ReactNode; color: 
   partner_task: { label: "Zadanie partnera", icon: <ArrowUpCircle className="h-4 w-4" />, color: "text-accent" },
 };
 
+const translateDescription = (desc: string | null): string => {
+  if (!desc) return "—";
+  return desc
+    .replace(/account_opened/gi, "Otwarcie konta bankowego")
+    .replace(/loan_application/gi, "Wniosek o kredyt")
+    .replace(/deposit_opened/gi, "Założenie lokaty");
+};
+
 const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { userPoints, transactions, loading } = useRewards();
+  const [username, setUsername] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [street, setStreet] = useState("");
@@ -34,6 +43,7 @@ const Profile = () => {
   const [pointsThreshold, setPointsThreshold] = useState(500);
   const [saving, setSaving] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [pendingPoints, setPendingPoints] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -41,10 +51,11 @@ const Profile = () => {
       setProfileLoading(true);
       const { data } = await supabase
         .from("profiles")
-        .select("name, first_name, last_name, street, city, postal_code, phone, email_notifications, points_threshold")
+        .select("name, first_name, last_name, street, city, postal_code, phone, email_notifications, points_threshold, username")
         .eq("user_id", user.id)
         .maybeSingle();
       if (data) {
+        setUsername((data as any).username || "");
         setFirstName(data.first_name || "");
         setLastName(data.last_name || "");
         setStreet(data.street || "");
@@ -56,7 +67,20 @@ const Profile = () => {
       }
       setProfileLoading(false);
     };
+
+    const fetchPending = async () => {
+      const { data } = await supabase
+        .from("partner_tasks")
+        .select("points_awarded")
+        .eq("user_id", user.id)
+        .eq("status", "pending");
+      if (data) {
+        setPendingPoints(data.reduce((sum, t) => sum + (t.points_awarded || 0), 0));
+      }
+    };
+
     fetchProfile();
+    fetchPending();
   }, [user]);
 
   const handleSave = async () => {
@@ -74,6 +98,7 @@ const Profile = () => {
         phone: phone || null,
         email_notifications: emailNotifications,
         points_threshold: pointsThreshold,
+        username: username || null,
       })
       .eq("user_id", user.id);
 
@@ -114,9 +139,9 @@ const Profile = () => {
 
   const clickPoints = transactions.filter(t => t.type === "click").reduce((sum, t) => sum + t.amount, 0);
   const purchasePoints = transactions.filter(t => t.type === "purchase").reduce((sum, t) => sum + t.amount, 0);
-  const kontaPoints = transactions.filter(t => t.description?.includes("konto:")).reduce((sum, t) => sum + t.amount, 0);
-  const kredytyPoints = transactions.filter(t => t.description?.includes("kredyt:")).reduce((sum, t) => sum + t.amount, 0);
-  const lokatyPoints = transactions.filter(t => t.description?.includes("lokata:")).reduce((sum, t) => sum + t.amount, 0);
+  const kontaPoints = transactions.filter(t => t.description?.toLowerCase().includes("konto:") || t.description?.toLowerCase().includes("otwarcie konta")).reduce((sum, t) => sum + t.amount, 0);
+  const kredytyPoints = transactions.filter(t => t.description?.toLowerCase().includes("kredyt:") || t.description?.toLowerCase().includes("wniosek o kredyt")).reduce((sum, t) => sum + t.amount, 0);
+  const lokatyPoints = transactions.filter(t => t.description?.toLowerCase().includes("lokata:") || t.description?.toLowerCase().includes("założenie lokaty")).reduce((sum, t) => sum + t.amount, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -130,36 +155,41 @@ const Profile = () => {
         <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 mb-4">
           <div className="rounded-xl border bg-card p-4 shadow-product text-center">
             <p className="text-2xl font-extrabold text-accent">{userPoints.balance}</p>
-            <p className="text-xs text-muted-foreground mt-1">Dostępne</p>
+            <p className="text-xs text-muted-foreground mt-1">Dostępne punkty</p>
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-product text-center">
             <p className="text-2xl font-extrabold text-foreground">{userPoints.total_earned}</p>
-            <p className="text-xs text-muted-foreground mt-1">Łącznie zdobyte</p>
+            <p className="text-xs text-muted-foreground mt-1">Łącznie zebrane punkty</p>
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-product text-center">
             <p className="text-2xl font-extrabold text-blue-500">{clickPoints}</p>
-            <p className="text-xs text-muted-foreground mt-1">Za kliknięcia</p>
+            <p className="text-xs text-muted-foreground mt-1">Punkty za kliknięcia</p>
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-product text-center">
             <p className="text-2xl font-extrabold text-success">{purchasePoints}</p>
-            <p className="text-xs text-muted-foreground mt-1">Za zakupy</p>
+            <p className="text-xs text-muted-foreground mt-1">Punkty za zakupy</p>
           </div>
         </div>
-        <div className="grid gap-4 grid-cols-3 mb-8">
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 mb-8">
           <div className="rounded-xl border bg-card p-4 shadow-product text-center">
             <Landmark className="mx-auto h-5 w-5 text-accent mb-1" />
             <p className="text-xl font-extrabold text-foreground">{kontaPoints}</p>
-            <p className="text-xs text-muted-foreground mt-1">Za konta</p>
+            <p className="text-xs text-muted-foreground mt-1">Punkty za założone konta bankowe</p>
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-product text-center">
             <CreditCard className="mx-auto h-5 w-5 text-accent mb-1" />
             <p className="text-xl font-extrabold text-foreground">{kredytyPoints}</p>
-            <p className="text-xs text-muted-foreground mt-1">Za kredyty</p>
+            <p className="text-xs text-muted-foreground mt-1">Punkty za wnioski o kredyt</p>
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-product text-center">
             <PiggyBank className="mx-auto h-5 w-5 text-accent mb-1" />
             <p className="text-xl font-extrabold text-foreground">{lokatyPoints}</p>
-            <p className="text-xs text-muted-foreground mt-1">Za lokaty</p>
+            <p className="text-xs text-muted-foreground mt-1">Punkty za założone lokaty</p>
+          </div>
+          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
+            <Clock className="mx-auto h-5 w-5 text-amber-500 mb-1" />
+            <p className="text-xl font-extrabold text-amber-500">{pendingPoints}</p>
+            <p className="text-xs text-muted-foreground mt-1">Punkty oczekujące</p>
           </div>
         </div>
 
@@ -175,6 +205,14 @@ const Profile = () => {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Mail className="h-4 w-4" />
                 {user.email}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="username">Login / nazwa użytkownika</Label>
+              <div className="relative">
+                <AtSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input id="username" value={username} onChange={e => setUsername(e.target.value)} placeholder="jankowalski" className="pl-10 max-w-sm" />
               </div>
             </div>
 
@@ -239,7 +277,7 @@ const Profile = () => {
         {transactions.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <History className="h-5 w-5" /> Historia aktywności
+              <History className="h-5 w-5" /> Historia punktów
             </h2>
             <div className="rounded-xl border bg-card shadow-product overflow-hidden">
               <table className="w-full">
@@ -261,7 +299,7 @@ const Profile = () => {
                             {cfg.icon} {cfg.label}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-foreground">{t.description || "—"}</td>
+                        <td className="px-4 py-3 text-sm text-foreground">{translateDescription(t.description)}</td>
                         <td className={`px-4 py-3 text-sm font-bold text-right ${t.amount > 0 ? "text-success" : "text-destructive"}`}>
                           {t.amount > 0 ? "+" : ""}{t.amount}
                         </td>

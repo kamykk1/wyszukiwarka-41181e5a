@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { UserPlus, Mail, Lock, User, MapPin } from "lucide-react";
+import { UserPlus, Mail, Lock, User, MapPin, AtSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 const Register = () => {
+  const [username, setUsername] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -32,6 +33,7 @@ const Register = () => {
       city,
       postal_code: postalCode,
       phone,
+      username: username || undefined,
     });
     setLoading(false);
     if (error) {
@@ -50,13 +52,20 @@ const Register = () => {
           <div className="rounded-2xl border bg-card p-8 shadow-product">
             <div className="mb-6 text-center">
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-accent font-extrabold text-accent-foreground">
-                SP
+                NS
               </div>
               <h1 className="text-2xl font-bold text-foreground">Stwórz konto</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Dołącz do SmartPrice i oszczędzaj</p>
+              <p className="mt-1 text-sm text-muted-foreground">Dołącz do NetSzukacz i oszczędzaj</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="username">Login / nazwa użytkownika</Label>
+                <div className="relative mt-1.5">
+                  <AtSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input id="username" placeholder="jankowalski" value={username} onChange={e => setUsername(e.target.value)} className="pl-10" required />
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="firstName">Imię</Label>

@@ -14,6 +14,7 @@ interface AdminUser {
   id: string;
   email: string;
   name: string | null;
+  username: string | null;
   roles: string[];
   created_at: string;
   last_sign_in_at: string | null;
@@ -21,6 +22,7 @@ interface AdminUser {
 }
 
 interface UserProfile {
+  username: string;
   first_name: string;
   last_name: string;
   phone: string;
@@ -46,7 +48,7 @@ const AdminUsers = () => {
   // Edit dialog
   const [editOpen, setEditOpen] = useState(false);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
-  const [editProfile, setEditProfile] = useState<UserProfile>({ first_name: "", last_name: "", phone: "", street: "", city: "", postal_code: "", country: "Polska" });
+  const [editProfile, setEditProfile] = useState<UserProfile>({ username: "", first_name: "", last_name: "", phone: "", street: "", city: "", postal_code: "", country: "Polska" });
   const [editLoading, setEditLoading] = useState(false);
 
   const fetchUsers = async () => {
@@ -61,7 +63,15 @@ const AdminUsers = () => {
     if (res.error) {
       toast({ title: "Błąd", description: "Nie udało się pobrać użytkowników.", variant: "destructive" });
     } else {
-      setUsers(res.data as AdminUser[]);
+      // Enrich with usernames from profiles
+      const userList = (res.data as any[]) || [];
+      const userIds = userList.map(u => u.id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username")
+        .in("user_id", userIds);
+      const usernameMap = new Map((profiles || []).map(p => [p.user_id, (p as any).username]));
+      setUsers(userList.map(u => ({ ...u, username: usernameMap.get(u.id) || null })));
     }
     setLoading(false);
   };
@@ -70,7 +80,8 @@ const AdminUsers = () => {
 
   const filtered = users.filter(u =>
     (u.name || "").toLowerCase().includes(search.toLowerCase()) ||
-    (u.email || "").toLowerCase().includes(search.toLowerCase())
+    (u.email || "").toLowerCase().includes(search.toLowerCase()) ||
+    (u.username || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const toggleRole = async (userId: string, currentRoles: string[]) => {
@@ -115,10 +126,11 @@ const AdminUsers = () => {
     setEditOpen(true);
     const { data } = await supabase
       .from("profiles")
-      .select("first_name, last_name, phone, street, city, postal_code, country")
+      .select("first_name, last_name, phone, street, city, postal_code, country, username")
       .eq("user_id", user.id)
       .single();
     setEditProfile({
+      username: (data as any)?.username || "",
       first_name: data?.first_name || "",
       last_name: data?.last_name || "",
       phone: data?.phone || "",
@@ -172,6 +184,7 @@ const AdminUsers = () => {
             <thead>
               <tr className="border-b text-left text-xs font-medium text-muted-foreground">
                 <th className="px-4 py-3">Użytkownik</th>
+                <th className="px-4 py-3">Login</th>
                 <th className="px-4 py-3">Rola</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Dołączył</th>
@@ -186,6 +199,9 @@ const AdminUsers = () => {
                       <p className="text-sm font-medium text-foreground">{user.name || "—"}</p>
                       <p className="text-xs text-muted-foreground">{user.email}</p>
                     </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                    {user.username || "—"}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 flex-wrap">
@@ -245,6 +261,10 @@ const AdminUsers = () => {
           ) : (
             <div className="space-y-3 mt-2">
               <p className="text-sm text-muted-foreground">{editUser?.email}</p>
+              <div className="space-y-1">
+                <Label>Login / nazwa użytkownika</Label>
+                <Input value={editProfile.username} onChange={e => setEditProfile(p => ({ ...p, username: e.target.value }))} placeholder="jankowalski" />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Imię</Label>
