@@ -15,7 +15,7 @@ verify_jwt = false
 [functions.partner-callback]
 verify_jwt = false
 
-[functions.fetch-partner-offers]
+[functions.send-test-email]
 verify_jwt = false
 
 [functions.tradedoubler-sync]
