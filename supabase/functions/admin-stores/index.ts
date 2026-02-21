@@ -117,6 +117,34 @@ Deno.serve(async (req) => {
       });
     }
 
+    // POST: Update cashback settings
+    if (req.method === "POST" && action === "update-cashback") {
+      const body = await req.json();
+      const { id, cashback_rate, cashback_type, affiliate_url } = body;
+
+      if (!id || typeof id !== "string") {
+        return new Response(JSON.stringify({ error: "Missing store id" }), {
+          status: 400, headers: corsHeaders,
+        });
+      }
+
+      const updateData: Record<string, any> = {};
+      if (cashback_rate !== undefined) updateData.cashback_rate = cashback_rate === "" || cashback_rate === null ? null : Number(cashback_rate);
+      if (cashback_type !== undefined) updateData.cashback_type = cashback_type || null;
+      if (affiliate_url !== undefined) updateData.affiliate_url = affiliate_url || null;
+
+      const { error } = await supabase
+        .from("stores")
+        .update(updateData)
+        .eq("id", id);
+
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400, headers: corsHeaders,
     });

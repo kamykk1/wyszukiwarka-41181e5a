@@ -34,6 +34,59 @@ interface TDProgram {
   synced_at: string;
 }
 
+const CashbackEditor = ({ store, onSave }: { store: StoreRow; onSave: (id: string, rate: string, type: string, url: string) => void }) => {
+  const [rate, setRate] = useState(store.cashback_rate != null ? String(store.cashback_rate) : "");
+  const [type, setType] = useState(store.cashback_type || "percent");
+  const [url, setUrl] = useState(store.affiliate_url || "");
+
+  return (
+    <div>
+      <Label className="mb-1.5 block text-sm font-medium">Ustawienia Cashback</Label>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <Label className="text-xs">Stawka cashback</Label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="np. 5.5"
+            value={rate}
+            onChange={e => setRate(e.target.value)}
+            className="mt-1.5"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Typ</Label>
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger className="mt-1.5">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="percent">Procent (%)</SelectItem>
+              <SelectItem value="fixed">Kwota stała (PLN)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">URL afiliacyjny</Label>
+          <Input
+            type="url"
+            placeholder="https://..."
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            className="mt-1.5"
+          />
+        </div>
+      </div>
+      <div className="flex justify-end mt-3">
+        <Button size="sm" variant="outline" onClick={() => onSave(store.id, rate, type, url)} className="gap-1.5">
+          <Save className="h-3.5 w-3.5" />
+          Zapisz cashback
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const AdminStores = () => {
   const [storeList, setStoreList] = useState<StoreRow[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -139,9 +192,11 @@ const AdminStores = () => {
   const assignProgram = async (storeId: string, programId: string | null) => {
     setAssigningId(storeId);
     try {
+      const store = storeList.find(s => s.id === storeId);
       await callEdgeFunction("tradedoubler-sync", "assign", "POST", {
         store_id: storeId,
         program_id: programId,
+        cashback_rate: store?.cashback_rate ?? null,
       });
       const prog = programId ? tdPrograms.find(p => p.id === programId) : null;
       setStoreList(prev => prev.map(s =>
@@ -150,8 +205,8 @@ const AdminStores = () => {
               ...s,
               partner_source: programId ? "tradedoubler" : "manual",
               tradedoubler_program_id: programId,
-              cashback_rate: prog?.cashback_rate ?? null,
-              cashback_type: prog?.cashback_type ?? null,
+              cashback_rate: s.cashback_rate ?? prog?.cashback_rate ?? null,
+              cashback_type: prog?.cashback_type ?? s.cashback_type ?? null,
             }
           : s
       ));
@@ -160,6 +215,25 @@ const AdminStores = () => {
       toast({ title: "Błąd", description: error.message, variant: "destructive" });
     }
     setAssigningId(null);
+  };
+
+  const saveCashback = async (storeId: string, rate: string, type: string, affiliateUrl: string) => {
+    try {
+      await callEdgeFunction("admin-stores", "update-cashback", "POST", {
+        id: storeId,
+        cashback_rate: rate === "" ? null : parseFloat(rate),
+        cashback_type: type || "percent",
+        affiliate_url: affiliateUrl || null,
+      });
+      setStoreList(prev => prev.map(s =>
+        s.id === storeId
+          ? { ...s, cashback_rate: rate === "" ? null : parseFloat(rate), cashback_type: type || "percent", affiliate_url: affiliateUrl || null }
+          : s
+      ));
+      toast({ title: "Zapisano ustawienia cashback ✓" });
+    } catch (error: any) {
+      toast({ title: "Błąd", description: error.message, variant: "destructive" });
+    }
   };
 
   if (loading) {
@@ -340,10 +414,13 @@ const AdminStores = () => {
                     {store.tradedoubler_program_id && (
                       <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
                         <Percent className="h-3 w-3" />
-                        Cashback: {store.cashback_rate ?? "—"}% · Program ID: {store.tradedoubler_program_id}
+                        Program ID: {store.tradedoubler_program_id}
                       </p>
                     )}
                   </div>
+
+                  {/* Cashback rate settings */}
+                  <CashbackEditor store={store} onSave={saveCashback} />
 
                   {/* Manual API keys */}
                   <div>
