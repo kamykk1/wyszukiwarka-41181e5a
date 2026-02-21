@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { Percent, ExternalLink, TrendingUp, Loader2, Store } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
-import EditableBanner from "@/components/EditableBanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import DOMPurify from "dompurify";
 
 interface CashbackStore {
   id: string;
@@ -44,9 +44,18 @@ const buildAffiliateUrl = (baseUrl: string, email: string | undefined) => {
   }
 };
 
+const defaultCashbackHeroHtml = `
+<div class="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent">
+  💰 Program Cashback
+</div>
+<h1 class="mb-4 text-4xl font-black tracking-tight text-gradient md:text-5xl">Zarabiaj kupując online</h1>
+<p class="mx-auto mb-6 max-w-lg text-lg text-primary-foreground/60">Klikaj przez nasze linki partnerskie i otrzymuj cashback za każde zakupy. Pieniądze wracają do Twojej kieszeni.</p>
+`;
+
 const Cashback = () => {
   const [stores, setStores] = useState<CashbackStore[]>([]);
   const [loading, setLoading] = useState(true);
+  const [heroHtml, setHeroHtml] = useState<string>(defaultCashbackHeroHtml);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -66,31 +75,40 @@ const Cashback = () => {
       setLoading(false);
     };
     fetchStores();
+
+    const fetchHero = async () => {
+      const { data } = await supabase
+        .from("page_settings")
+        .select("header_html")
+        .eq("id", "cashback")
+        .single();
+      if (data?.header_html && data.header_html.trim() !== "" && data.header_html !== "<p><br></p>") {
+        setHeroHtml(data.header_html);
+      }
+    };
+    fetchHero();
   }, []);
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <EditableBanner pageId="cashback" />
 
-      {/* Hero */}
+      {/* Hero - editable from admin */}
       <section className="gradient-hero relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-10 h-72 w-72 rounded-full bg-accent blur-3xl" />
           <div className="absolute bottom-10 right-20 h-96 w-96 rounded-full bg-accent/50 blur-3xl" />
         </div>
         <div className="container relative mx-auto px-4 py-20 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent">
-            <Percent className="h-3.5 w-3.5" />
-            Program Cashback
-          </div>
-          <h1 className="mb-4 text-4xl font-black tracking-tight text-gradient md:text-5xl">
-            Zarabiaj kupując online
-          </h1>
-          <p className="mx-auto mb-6 max-w-lg text-lg text-primary-foreground/60">
-            Klikaj przez nasze linki partnerskie i otrzymuj cashback za każde zakupy.
-            Pieniądze wracają do Twojej kieszeni.
-          </p>
+          <div
+            className="prose prose-sm max-w-none mx-auto mb-6
+              [&_h1]:text-4xl [&_h1]:md:text-5xl [&_h1]:font-black [&_h1]:tracking-tight [&_h1]:text-gradient [&_h1]:mb-4
+              [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:text-primary-foreground [&_h2]:mb-3
+              [&_p]:text-lg [&_p]:text-primary-foreground/60 [&_p]:mb-4 [&_p]:mx-auto [&_p]:max-w-lg
+              [&_a]:text-accent [&_a]:underline
+              [&_strong]:text-primary-foreground"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(heroHtml) }}
+          />
           <div className="flex flex-wrap justify-center gap-6 text-sm text-primary-foreground/50">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-accent" />
@@ -104,8 +122,8 @@ const Cashback = () => {
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="border-b bg-card">
+      {/* How it works - blue accent bg */}
+      <section className="bg-accent/10 border-b">
         <div className="container mx-auto px-4 py-10">
           <div className="grid gap-6 sm:grid-cols-3 text-center">
             {[
@@ -159,7 +177,6 @@ const Cashback = () => {
                 className="group relative rounded-xl border bg-card p-5 shadow-product transition-all duration-300 hover:shadow-product-hover hover:-translate-y-1 animate-fade-in"
                 style={{ animationDelay: `${i * 50}ms` }}
               >
-                {/* Top cashback badge */}
                 {i === 0 && (
                   <div className="absolute -top-2 -right-2 rounded-full bg-accent px-2.5 py-0.5 text-xs font-bold text-accent-foreground shadow-md">
                     Najwyższy
