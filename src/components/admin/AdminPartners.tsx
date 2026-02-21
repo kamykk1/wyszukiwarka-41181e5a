@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, Save, Loader2, Plug, Coins, Download, Plus, Trash2 } from "lucide-react";
+import { Settings, Save, Loader2, Plug, Coins, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,7 +54,7 @@ const AdminPartners = () => {
   const [partners, setPartners] = useState<PartnerView[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [fetchingOffers, setFetchingOffers] = useState<string | null>(null);
+  
   const [editValues, setEditValues] = useState<{
     api_key: string;
     api_secret: string;
@@ -185,22 +185,6 @@ const AdminPartners = () => {
     }
   };
 
-  const fetchOffers = async (partnerId: string) => {
-    setFetchingOffers(partnerId);
-    try {
-      const { data: result, error: err } = await supabase.functions.invoke("fetch-partner-offers", {
-        body: { partner_id: partnerId },
-      });
-      if (err) {
-        toast({ title: "Błąd pobierania ofert", description: err.message, variant: "destructive" });
-      } else {
-        toast({ title: `Pobrano oferty ✓`, description: `Zaimportowano ${result?.imported || 0} ofert od ${partners.find(p => p.id === partnerId)?.display_name}` });
-      }
-    } catch (e) {
-      toast({ title: "Błąd", description: e instanceof Error ? e.message : "Nieznany błąd", variant: "destructive" });
-    }
-    setFetchingOffers(null);
-  };
 
   // Stats
   const [stats, setStats] = useState<Record<string, { tasks: number; points: number }>>({});
@@ -260,14 +244,6 @@ const AdminPartners = () => {
                     <Badge variant={partner.enabled ? "default" : "secondary"} className={partner.enabled ? "bg-success text-success-foreground" : ""}>
                       {partner.task_points} pkt/zadanie
                     </Badge>
-                    <Button 
-                      variant="ghost" size="icon" className="h-8 w-8" 
-                      disabled={!partner.enabled || !partner.base_url || fetchingOffers === partner.id}
-                      onClick={() => fetchOffers(partner.id)}
-                      title="Pobierz oferty z API partnera"
-                    >
-                      {fetchingOffers === partner.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                    </Button>
                     <Switch checked={partner.enabled} onCheckedChange={() => toggleEnabled(partner.id, partner.enabled)} />
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editingId === partner.id ? setEditingId(null) : startEditing(partner)}>
                       <Settings className="h-4 w-4" />
