@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -107,11 +108,12 @@ const ResetPassword = () => {
                     placeholder="Min. 8 znaków"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    className="pl-10"
+                   className="pl-10"
                     minLength={8}
                     required
                   />
                 </div>
+                <PasswordStrengthIndicator password={password} />
               </div>
               <div>
                 <Label htmlFor="confirmPassword">Powtórz nowe hasło</Label>
