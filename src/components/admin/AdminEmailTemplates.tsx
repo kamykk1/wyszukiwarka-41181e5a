@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Mail, Save, Loader2, Code, Eye, RotateCcw } from "lucide-react";
+import { Mail, Save, Loader2, Code, Eye, RotateCcw, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,23 @@ interface EmailTemplate {
   updated_at: string;
 }
 
+const EXAMPLE_VARS: Record<string, string> = {
+  points: "50",
+  category: "Konto osobiste",
+  partner_name: "Bankier.pl",
+  amount_info: '<p>Kwota transakcji: <strong>5 000 zł</strong></p>',
+  threshold: "500",
+  name_greeting: ", Jan",
+  total_earned: "520",
+  reward_name: "Karta podarunkowa 50 zł",
+  points_cost: "500",
+  reward_description: "<p>Karta podarunkowa do wykorzystania w sklepach partnerskich.</p>",
+  subject: "Testowy temat",
+  name: "Jan",
+  message: "To jest przykładowa treść wiadomości.",
+  click_button: '<p><a href="#" style="display:inline-block;padding:10px 20px;background:#ff6b35;color:white;text-decoration:none;border-radius:6px;">Odbierz 10 punktów →</a></p>',
+};
+
 const AdminEmailTemplates = () => {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -28,6 +45,8 @@ const AdminEmailTemplates = () => {
   const [html, setHtml] = useState("");
   const [saving, setSaving] = useState(false);
   const [previewMode, setPreviewMode] = useState<"edit" | "preview">("edit");
+  const [testEmail, setTestEmail] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
 
   const fetchTemplates = async () => {
     setLoading(true);
@@ -79,29 +98,36 @@ const AdminEmailTemplates = () => {
     }
   };
 
-  const getPreviewHtml = () => {
-    let preview = html;
-    // Replace variables with example values
-    const examples: Record<string, string> = {
-      points: "50",
-      category: "Konto osobiste",
-      partner_name: "Bankier.pl",
-      amount_info: '<p>Kwota transakcji: <strong>5 000 zł</strong></p>',
-      threshold: "500",
-      name_greeting: ", Jan",
-      total_earned: "520",
-      reward_name: "Karta podarunkowa 50 zł",
-      points_cost: "500",
-      reward_description: "<p>Karta podarunkowa do wykorzystania w sklepach partnerskich.</p>",
-      subject: "Testowy temat",
-      name: "Jan",
-      message: "To jest przykładowa treść wiadomości.",
-      click_button: '<p><a href="#" style="display:inline-block;padding:10px 20px;background:#ff6b35;color:white;text-decoration:none;border-radius:6px;">Odbierz 10 punktów →</a></p>',
-    };
-    for (const [key, val] of Object.entries(examples)) {
-      preview = preview.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), val);
+  const renderWithExamples = (template: string) => {
+    let result = template;
+    for (const [key, val] of Object.entries(EXAMPLE_VARS)) {
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), val);
     }
-    return preview;
+    return result;
+  };
+
+  const handleSendTest = async () => {
+    if (!testEmail || !subject || !html) return;
+    setSendingTest(true);
+    try {
+      const previewSubject = renderWithExamples(subject);
+      const previewHtml = renderWithExamples(html);
+
+      const { data, error } = await supabase.functions.invoke("send-test-email", {
+        body: { to: testEmail, subject: previewSubject, html: previewHtml },
+      });
+
+      if (error) {
+        toast({ title: "Błąd wysyłki", description: error.message, variant: "destructive" });
+      } else if (data?.error) {
+        toast({ title: "Błąd", description: data.error, variant: "destructive" });
+      } else {
+        toast({ title: "Wysłano! 📧", description: `Testowy email wysłany na ${testEmail}` });
+      }
+    } catch (err) {
+      toast({ title: "Błąd", description: "Nie udało się wysłać emaila", variant: "destructive" });
+    }
+    setSendingTest(false);
   };
 
   if (loading) {
@@ -189,20 +215,43 @@ const AdminEmailTemplates = () => {
                   <TabsContent value="preview">
                     <div className="rounded-lg border bg-background p-4 min-h-[300px]">
                       <p className="mb-2 text-xs text-muted-foreground">
-                        <strong>Temat:</strong> {subject.replace(/\{\{(\w+)\}\}/g, (_, k) => {
-                          const ex: Record<string, string> = { points: "50", threshold: "500", reward_name: "Karta 50 zł", subject: "Testowy temat" };
-                          return ex[k] || `[${k}]`;
-                        })}
+                        <strong>Temat:</strong> {renderWithExamples(subject)}
                       </p>
                       <iframe
                         sandbox=""
-                        srcDoc={getPreviewHtml()}
+                        srcDoc={renderWithExamples(html)}
                         className="w-full min-h-[260px] border-0"
                         title="Podgląd szablonu"
                       />
                     </div>
                   </TabsContent>
                 </Tabs>
+              </div>
+
+              {/* Test email */}
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <Label className="mb-1.5 block text-sm font-medium">Wyślij testowy e-mail</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="email"
+                    placeholder="adres@email.com"
+                    value={testEmail}
+                    onChange={e => setTestEmail(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={handleSendTest}
+                    disabled={sendingTest || !testEmail}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {sendingTest ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
+                    {sendingTest ? "Wysyłanie..." : "Wyślij test"}
+                  </Button>
+                </div>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Zmienne zostaną zastąpione przykładowymi wartościami.
+                </p>
               </div>
 
               <div className="flex items-center gap-3 border-t pt-4">
