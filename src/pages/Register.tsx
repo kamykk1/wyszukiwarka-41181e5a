@@ -8,6 +8,7 @@ import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator";
 
 const Register = () => {
   const [username, setUsername] = useState("");
@@ -107,6 +108,7 @@ const Register = () => {
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input id="password" type="password" placeholder="Min. 8 znaków" value={password} onChange={e => setPassword(e.target.value)} className="pl-10" minLength={8} required />
                 </div>
+                <PasswordStrengthIndicator password={password} />
               </div>
 
               <div>
