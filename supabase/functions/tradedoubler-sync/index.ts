@@ -369,7 +369,7 @@ Deno.serve(async (req) => {
     // ─── Assign Tradedoubler program to store ──────────────────────────────
     if (req.method === "POST" && action === "assign") {
       const body = await req.json();
-      const { store_id, program_id } = body;
+      const { store_id, program_id, cashback_rate, cashback_type } = body;
 
       if (!store_id) {
         return new Response(JSON.stringify({ error: "Missing store_id" }), {
@@ -401,20 +401,24 @@ Deno.serve(async (req) => {
         .eq("id", program_id)
         .single();
 
+      // Use provided cashback_rate or fall back to program's rate
+      const finalRate = cashback_rate != null ? cashback_rate : (prog?.cashback_rate || null);
+      const finalType = cashback_type || prog?.cashback_type || "percent";
+
       const { error } = await supabase
         .from("stores")
         .update({
           partner_source: "tradedoubler",
           tradedoubler_program_id: program_id,
           tradedoubler_advertiser_id: prog?.advertiser_id || null,
-          cashback_rate: prog?.cashback_rate || null,
-          cashback_type: prog?.cashback_type || "percent",
+          cashback_rate: finalRate,
+          cashback_type: finalType,
         })
         .eq("id", store_id);
 
       if (error) throw error;
 
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ success: true, cashback_rate: finalRate }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
