@@ -57,7 +57,7 @@ const Index = () => {
           <div className="absolute bottom-10 right-20 h-96 w-96 rounded-full bg-accent/50 blur-3xl" />
         </div>
 
-        <div className="container relative mx-auto px-4 py-8 text-center">
+        <div className="container relative mx-auto px-4 py-4 text-center">
           <div
             className="prose prose-sm max-w-none mx-auto mb-6
               [&_h1]:text-5xl [&_h1]:md:text-6xl [&_h1]:font-black [&_h1]:tracking-tight [&_h1]:text-gradient [&_h1]:mb-4
