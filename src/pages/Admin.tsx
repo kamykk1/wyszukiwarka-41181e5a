@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift, ShoppingBag, Plug, Landmark, FileText, History } from "lucide-react";
+import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift, ShoppingBag, Plug, Landmark, FileText, History, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AdminUsers from "@/components/admin/AdminUsers";
@@ -11,10 +11,12 @@ import AdminPartners from "@/components/admin/AdminPartners";
 import AdminFinancialProducts from "@/components/admin/AdminFinancialProducts";
 import AdminPageSettings from "@/components/admin/AdminPageSettings";
 import AdminTransactions from "@/components/admin/AdminTransactions";
+import AdminDashboard from "@/components/admin/AdminDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
 const tabs = [
+  { id: "dashboard", label: "Dashboard", icon: BarChart3 },
   { id: "users", label: "Użytkownicy", icon: Users },
   { id: "stores", label: "Sklepy", icon: Store },
   { id: "partners", label: "Integracje", icon: Plug },
@@ -27,7 +29,7 @@ const tabs = [
 ];
 
 const Admin = () => {
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = useState("dashboard");
   const { user, loading: authLoading, isAdmin } = useAuth();
 
   if (authLoading) {
@@ -88,6 +90,7 @@ const Admin = () => {
           </div>
 
           <div className="flex-1 animate-fade-in">
+            {activeTab === "dashboard" && <AdminDashboard />}
             {activeTab === "users" && <AdminUsers />}
             {activeTab === "stores" && <AdminStores />}
             {activeTab === "partners" && <AdminPartners />}
