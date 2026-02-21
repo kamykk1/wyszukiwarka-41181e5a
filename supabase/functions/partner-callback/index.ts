@@ -177,12 +177,24 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "User not found" }), { status: 404, headers: corsHeaders });
     }
 
-    // Determine points: category_points > task_points
+    // Determine points: product-level > category_points > task_points
     let basePoints = matchedPartner.task_points;
     if (matchedCategory && matchedPartner.category_points && typeof matchedPartner.category_points === "object") {
       const catPoints = (matchedPartner.category_points as Record<string, number>)[matchedCategory];
       if (catPoints !== undefined && catPoints !== null) {
         basePoints = catPoints;
+      }
+    }
+
+    // Check if a specific product has custom points_reward
+    if (product_id) {
+      const { data: productData } = await supabase
+        .from("financial_products")
+        .select("points_reward")
+        .eq("id", product_id)
+        .maybeSingle();
+      if (productData?.points_reward != null) {
+        basePoints = productData.points_reward;
       }
     }
 

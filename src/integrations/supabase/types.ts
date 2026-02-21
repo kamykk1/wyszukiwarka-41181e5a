@@ -77,6 +77,7 @@ export type Database = {
           min_amount: number | null
           name: string
           partner_id: string | null
+          points_reward: number | null
           provider: string
           source: string | null
           updated_at: string
@@ -98,6 +99,7 @@ export type Database = {
           min_amount?: number | null
           name: string
           partner_id?: string | null
+          points_reward?: number | null
           provider: string
           source?: string | null
           updated_at?: string
@@ -119,6 +121,7 @@ export type Database = {
           min_amount?: number | null
           name?: string
           partner_id?: string | null
+          points_reward?: number | null
           provider?: string
           source?: string | null
           updated_at?: string
