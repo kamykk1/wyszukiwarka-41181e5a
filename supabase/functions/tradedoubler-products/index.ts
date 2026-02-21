@@ -50,6 +50,16 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Validate apikey header
+    const apiKey = req.headers.get("apikey");
+    const expectedKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!apiKey || apiKey !== expectedKey) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const url = new URL(req.url);
     const query = url.searchParams.get("q") || "";
     const page = parseInt(url.searchParams.get("page") || "1");
