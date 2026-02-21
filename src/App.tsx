@@ -8,6 +8,8 @@ import Index from "./pages/Index";
 import SearchResults from "./pages/SearchResults";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
 import ProductDetail from "./pages/ProductDetail";
 import Favorites from "./pages/Favorites";
@@ -35,6 +37,8 @@ const App = () => (
             <Route path="/search" element={<SearchResults />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/admin-panel" element={<Admin />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/favorites" element={<Favorites />} />
