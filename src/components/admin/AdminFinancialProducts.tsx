@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Plus, Pencil, Trash2, Save, X, Landmark, CreditCard, PiggyBank, Coins, Key } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Save, X, Landmark, CreditCard, PiggyBank, Coins, Key, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,6 +83,42 @@ const AdminFinancialProducts = () => {
   const [keysDialogOpen, setKeysDialogOpen] = useState(false);
   const [editingKeysPartner, setEditingKeysPartner] = useState<PartnerIntegration | null>(null);
   const [categoryApiKeys, setCategoryApiKeys] = useState<Record<string, string>>({});
+
+  // Product history
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const openHistory = async (product: Product) => {
+    setHistoryProduct(product);
+    setHistoryDialogOpen(true);
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from("partner_tasks")
+      .select("id, user_id, points_awarded, task_type, created_at, status")
+      .eq("product_id", product.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    
+    // Fetch user emails for the tasks
+    const tasks = data || [];
+    if (tasks.length > 0) {
+      const userIds = [...new Set(tasks.map(t => t.user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, email, name")
+        .in("user_id", userIds);
+      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+      for (const t of tasks) {
+        const profile = profileMap.get(t.user_id);
+        (t as any).email = profile?.email || "—";
+        (t as any).user_name = profile?.name || null;
+      }
+    }
+    setHistoryData(tasks);
+    setHistoryLoading(false);
+  };
 
   const fetchAll = async () => {
     setLoading(true);
@@ -315,6 +351,9 @@ const AdminFinancialProducts = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Historia punktów" onClick={() => openHistory(p)}>
+                          <History className="h-3.5 w-3.5" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(p)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -504,6 +543,68 @@ const AdminFinancialProducts = () => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Product Points History Dialog */}
+      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" /> Historia punktów — {historyProduct?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {historyLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : historyData.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">
+              Brak przyznanych punktów dla tego produktu.
+            </div>
+          ) : (
+            <div>
+              <div className="mb-3 flex items-center gap-4 text-sm text-muted-foreground">
+                <span>Łącznie: <strong className="text-foreground">{historyData.length}</strong> transakcji</span>
+                <span>Suma: <strong className="text-accent">{historyData.reduce((s, t) => s + (t.points_awarded || 0), 0)} pkt</strong></span>
+              </div>
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-xs font-medium text-muted-foreground bg-muted/50">
+                      <th className="px-3 py-2">Użytkownik</th>
+                      <th className="px-3 py-2">Punkty</th>
+                      <th className="px-3 py-2">Typ</th>
+                      <th className="px-3 py-2">Status</th>
+                      <th className="px-3 py-2">Data</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyData.map((t: any) => (
+                      <tr key={t.id} className="border-b last:border-0">
+                        <td className="px-3 py-2">
+                          <div className="text-foreground text-xs font-medium">{t.user_name || "—"}</div>
+                          <div className="text-muted-foreground text-xs">{t.email}</div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <Badge className="bg-accent/10 text-accent text-xs">{t.points_awarded} pkt</Badge>
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">{t.task_type}</td>
+                        <td className="px-3 py-2">
+                          <Badge variant={t.status === "confirmed" ? "default" : "secondary"} className="text-xs">
+                            {t.status}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {new Date(t.created_at).toLocaleDateString("pl-PL")} {new Date(t.created_at).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
