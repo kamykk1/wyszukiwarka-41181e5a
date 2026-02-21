@@ -24,18 +24,14 @@ const Login = () => {
 
     // If not an email, look up the username to find email
     if (!emailToUse.includes("@")) {
-      const { data } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("username", emailToUse)
-        .maybeSingle();
+      const { data } = await supabase.rpc("get_email_by_username", { _username: emailToUse });
 
-      if (!data?.email) {
+      if (!data) {
         toast.error("Nie znaleziono użytkownika o podanym loginie");
         setLoading(false);
         return;
       }
-      emailToUse = data.email;
+      emailToUse = data as string;
     }
 
     const { error } = await signIn(emailToUse, password);
