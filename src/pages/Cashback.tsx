@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CashbackStore {
   id: string;
@@ -29,9 +30,23 @@ const CashbackRateBadge = ({ rate, type }: { rate: number; type: string | null }
   );
 };
 
+const buildAffiliateUrl = (baseUrl: string, email: string | undefined) => {
+  if (!baseUrl) return baseUrl;
+  try {
+    const url = new URL(baseUrl);
+    if (email) {
+      url.searchParams.set("epi1", email);
+    }
+    return url.toString();
+  } catch {
+    return email ? `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}epi1=${encodeURIComponent(email)}` : baseUrl;
+  }
+};
+
 const Cashback = () => {
   const [stores, setStores] = useState<CashbackStore[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchStores = async () => {
@@ -178,7 +193,7 @@ const Cashback = () => {
                       className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
                       asChild
                     >
-                      <a href={store.affiliate_url} target="_blank" rel="noopener noreferrer">
+                      <a href={buildAffiliateUrl(store.affiliate_url, user?.email ?? undefined)} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                         Przejdź do sklepu
                       </a>
