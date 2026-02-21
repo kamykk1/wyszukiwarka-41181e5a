@@ -13,9 +13,13 @@ interface PageSetting {
 }
 
 const pageLabels: Record<string, string> = {
+  home: "Strona główna",
   konta: "Konta Bankowe",
   kredyty: "Kredyty",
   lokaty: "Lokaty",
+  cashback: "Cashback",
+  rewards: "Nagrody",
+  leaderboard: "Ranking",
 };
 
 const AdminPageSettings = () => {
@@ -53,7 +57,7 @@ const AdminPageSettings = () => {
   return (
     <div className="rounded-xl border bg-card p-6 shadow-product">
       <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-        <FileText className="h-5 w-5" /> Nagłówki stron finansowych (HTML)
+        <FileText className="h-5 w-5" /> Edycja treści stron (HTML)
       </h2>
       <div className="space-y-6">
         {settings.map(s => (
@@ -82,7 +86,7 @@ const AdminPageSettings = () => {
         ))}
         <Button onClick={handleSave} disabled={saving} className="bg-accent text-accent-foreground hover:bg-accent/90">
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          Zapisz nagłówki
+          Zapisz wszystkie strony
         </Button>
       </div>
     </div>

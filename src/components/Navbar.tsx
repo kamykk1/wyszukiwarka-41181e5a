@@ -1,17 +1,29 @@
-import { Link, useLocation } from "react-router-dom";
-import { Search, User, LogIn, LogOut, Menu, Heart, Gift, Trophy, Landmark, CreditCard, PiggyBank, Percent } from "lucide-react";
+import { Link } from "react-router-dom";
+import { User, LogIn, LogOut, Menu, Heart, Gift, Trophy, Landmark, CreditCard, PiggyBank, Percent, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
 
+const kontaSubpages = [
+  { label: "Konta osobiste", path: "/konta?typ=konta_osobiste" },
+  { label: "Konta firmowe", path: "/konta?typ=konta_firmowe" },
+  { label: "Konta oszczędnościowe", path: "/konta?typ=konta_oszczednosciowe" },
+];
+
+const kredytySubpages = [
+  { label: "Kredyty gotówkowe", path: "/kredyty?typ=kredyty_gotowkowe" },
+  { label: "Kredyty konsolidacyjne", path: "/kredyty?typ=kredyty_konsolidacyjne" },
+  { label: "Kredyty hipoteczne", path: "/kredyty?typ=kredyty_hipoteczne" },
+];
+
 const Navbar = () => {
-  const location = useLocation();
   const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
 
-    const navItems = (
+  const navItems = (
     <>
       <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
         <Link to="/cashback">
@@ -19,18 +31,81 @@ const Navbar = () => {
           Cashback
         </Link>
       </Button>
-      <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
-        <Link to="/konta">
-          <Landmark className="mr-1.5 h-4 w-4" />
-          Konta Bankowe
-        </Link>
-      </Button>
-      <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
-        <Link to="/kredyty">
-          <CreditCard className="mr-1.5 h-4 w-4" />
-          Kredyty
-        </Link>
-      </Button>
+
+      {/* Konta Bankowe dropdown - desktop */}
+      <div className="hidden lg:block">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm">
+              <Landmark className="mr-1.5 h-4 w-4" />
+              Konta Bankowe
+              <ChevronDown className="ml-1 h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {kontaSubpages.map(s => (
+              <DropdownMenuItem key={s.path} asChild>
+                <Link to={s.path}>{s.label}</Link>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Konta Bankowe - mobile (inline) */}
+      <div className="lg:hidden flex flex-col gap-1">
+        <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+          <Link to="/konta">
+            <Landmark className="mr-1.5 h-4 w-4" />
+            Konta Bankowe
+          </Link>
+        </Button>
+        <div className="pl-6 flex flex-col gap-0.5">
+          {kontaSubpages.map(s => (
+            <Button key={s.path} variant="ghost" size="sm" className="justify-start text-xs h-8" asChild onClick={() => setOpen(false)}>
+              <Link to={s.path}>{s.label}</Link>
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Kredyty dropdown - desktop */}
+      <div className="hidden lg:block">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm">
+              <CreditCard className="mr-1.5 h-4 w-4" />
+              Kredyty
+              <ChevronDown className="ml-1 h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {kredytySubpages.map(s => (
+              <DropdownMenuItem key={s.path} asChild>
+                <Link to={s.path}>{s.label}</Link>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Kredyty - mobile (inline) */}
+      <div className="lg:hidden flex flex-col gap-1">
+        <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+          <Link to="/kredyty">
+            <CreditCard className="mr-1.5 h-4 w-4" />
+            Kredyty
+          </Link>
+        </Button>
+        <div className="pl-6 flex flex-col gap-0.5">
+          {kredytySubpages.map(s => (
+            <Button key={s.path} variant="ghost" size="sm" className="justify-start text-xs h-8" asChild onClick={() => setOpen(false)}>
+              <Link to={s.path}>{s.label}</Link>
+            </Button>
+          ))}
+        </div>
+      </div>
+
       <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
         <Link to="/lokaty">
           <PiggyBank className="mr-1.5 h-4 w-4" />
@@ -95,7 +170,7 @@ const Navbar = () => {
         <Link to="/" className="flex items-center gap-3">
           <img src={logo} alt="NetSzukacz" className="h-20 w-auto rounded-lg" />
           <div className="hidden sm:flex flex-col leading-tight">
-            <span className="text-lg font-black text-foreground">net szukacz.pl</span>
+            <span className="text-lg font-black text-foreground">netszukacz.pl</span>
             <span className="text-[10px] text-muted-foreground">otrzymuj punkty za codzienne czynności</span>
           </div>
         </Link>
@@ -112,7 +187,7 @@ const Navbar = () => {
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-64">
+          <SheetContent side="right" className="w-64 overflow-y-auto">
             <SheetTitle className="text-lg font-bold">Menu</SheetTitle>
             <div className="mt-6 flex flex-col gap-2">
               {navItems}
