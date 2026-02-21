@@ -11,8 +11,14 @@ const Navbar = () => {
   const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
 
-  const navItems = (
+    const navItems = (
     <>
+      <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+        <Link to="/cashback">
+          <Percent className="mr-1.5 h-4 w-4" />
+          Cashback
+        </Link>
+      </Button>
       <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
         <Link to="/konta">
           <Landmark className="mr-1.5 h-4 w-4" />
@@ -29,12 +35,6 @@ const Navbar = () => {
         <Link to="/lokaty">
           <PiggyBank className="mr-1.5 h-4 w-4" />
           Lokaty
-        </Link>
-      </Button>
-      <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
-        <Link to="/cashback">
-          <Percent className="mr-1.5 h-4 w-4" />
-          Cashback
         </Link>
       </Button>
       <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
