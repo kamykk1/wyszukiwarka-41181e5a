@@ -7,6 +7,47 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-api-key, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function sanitize(input: string | undefined | null): string {
+  if (!input) return "";
+  return input.replace(/<[^>]*>/g, "").trim().slice(0, 500);
+}
+
+async function sendEmail(to: string, subject: string, html: string) {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendKey) {
+    console.warn("RESEND_API_KEY not set, skipping email");
+    return;
+  }
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "NetSzukacz <onboarding@resend.dev>",
+        to: [to],
+        subject,
+        html,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`Resend error [${res.status}]: ${body}`);
+    }
+  } catch (e) {
+    console.error("Email send failed:", e);
+  }
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  konta_osobiste: "Konto osobiste",
+  konta_firmowe: "Konto firmowe",
+  konta_oszczednosciowe: "Konto oszczędnościowe",
+  kredyty_hipoteczne: "Kredyt hipoteczny",
+  kredyty_gotowkowe: "Kredyt gotówkowy",
+  kredyty_konsolidacyjne: "Kredyt konsolidacyjny",
+  lokaty: "Lokata",
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,14 +62,64 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing x-api-key header" }), { status: 401, headers: corsHeaders });
     }
 
+    // Validate API key format
+    if (apiKey.length < 10 || apiKey.length > 200) {
+      return new Response(JSON.stringify({ error: "Invalid API key format" }), { status: 401, headers: corsHeaders });
+    }
+
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const { user_email, task_type, external_task_id, product_id, category, amount } = await req.json();
+    let body: Record<string, any>;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
+    }
 
+    const { user_email, task_type, external_task_id, product_id, category, amount } = body;
+
+    // Input validation
     if (!user_email || !task_type || !external_task_id) {
       return new Response(
         JSON.stringify({ error: "user_email, task_type, and external_task_id are required" }),
         { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Sanitize inputs
+    const cleanEmail = sanitize(user_email).toLowerCase();
+    const cleanTaskType = sanitize(task_type);
+    const cleanExternalId = sanitize(external_task_id);
+    const cleanCategory = category ? sanitize(category) : null;
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return new Response(JSON.stringify({ error: "Invalid email format" }), { status: 400, headers: corsHeaders });
+    }
+
+    // Validate amount if provided
+    let numAmount: number | null = null;
+    if (amount !== undefined && amount !== null) {
+      numAmount = Number(amount);
+      if (isNaN(numAmount) || numAmount < 0 || numAmount > 100_000_000) {
+        return new Response(JSON.stringify({ error: "Invalid amount" }), { status: 400, headers: corsHeaders });
+      }
+    }
+
+    // Rate limiting: check for duplicate within 5 minutes
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: recentTask } = await supabase
+      .from("partner_tasks")
+      .select("id")
+      .eq("external_task_id", cleanExternalId)
+      .eq("status", "confirmed")
+      .gte("created_at", fiveMinAgo)
+      .maybeSingle();
+
+    if (recentTask) {
+      return new Response(
+        JSON.stringify({ error: "Duplicate task within dedup window" }),
+        { status: 409, headers: corsHeaders }
       );
     }
 
@@ -44,20 +135,18 @@ Deno.serve(async (req) => {
 
     // Match partner by: 1) category-specific API key, 2) global API key
     let matchedPartner: typeof partners[0] | null = null;
-    let matchedCategory: string | null = category || null;
+    let matchedCategory: string | null = cleanCategory;
 
     for (const p of partners) {
-      // Check category_api_keys first (per-category verification)
-      if (category && p.category_api_keys && typeof p.category_api_keys === "object") {
+      if (cleanCategory && p.category_api_keys && typeof p.category_api_keys === "object") {
         const catKeys = p.category_api_keys as Record<string, string>;
-        if (catKeys[category] === apiKey) {
+        if (catKeys[cleanCategory] === apiKey) {
           matchedPartner = p;
-          matchedCategory = category;
+          matchedCategory = cleanCategory;
           break;
         }
       }
 
-      // If no category match, check if any category key matches (auto-detect category)
       if (!matchedPartner && p.category_api_keys && typeof p.category_api_keys === "object") {
         const catKeys = p.category_api_keys as Record<string, string>;
         for (const [cat, key] of Object.entries(catKeys)) {
@@ -70,7 +159,6 @@ Deno.serve(async (req) => {
         if (matchedPartner) break;
       }
 
-      // Fallback to global api_key
       if (p.api_key === apiKey) {
         matchedPartner = p;
         break;
@@ -83,7 +171,7 @@ Deno.serve(async (req) => {
 
     // Find user by email
     const { data: userList } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-    const targetUser = userList?.users?.find(u => u.email === user_email);
+    const targetUser = userList?.users?.find(u => u.email === cleanEmail);
 
     if (!targetUser) {
       return new Response(JSON.stringify({ error: "User not found" }), { status: 404, headers: corsHeaders });
@@ -103,28 +191,51 @@ Deno.serve(async (req) => {
     const calcModes = (matchedPartner.category_calc_mode || {}) as Record<string, string>;
     const calcMode = matchedCategory ? (calcModes[matchedCategory] || "flat") : "flat";
 
-    if (calcMode === "per_1000" && amount) {
-      const numAmount = Number(amount);
-      if (numAmount > 0) {
-        // Points = basePoints * (amount / 1000), rounded down
-        points = Math.floor(basePoints * (numAmount / 1000));
-        if (points < 1) points = 1; // minimum 1 point
-      }
+    if (calcMode === "per_1000" && numAmount && numAmount > 0) {
+      points = Math.floor(basePoints * (numAmount / 1000));
+      if (points < 1) points = 1;
     }
+
+    // Cap maximum points per single transaction
+    if (points > 1_000_000) points = 1_000_000;
 
     // Award points
     const { data: result, error: rpcErr } = await supabase.rpc("award_partner_task_points", {
       _user_id: targetUser.id,
       _partner_id: matchedPartner.id,
-      _task_type: task_type,
-      _external_task_id: external_task_id,
+      _task_type: cleanTaskType,
+      _external_task_id: cleanExternalId,
       _product_id: product_id || null,
       _override_points: points,
     });
 
     if (rpcErr) {
-      return new Response(JSON.stringify({ error: rpcErr.message }), { status: 500, headers: corsHeaders });
+      console.error("RPC error:", rpcErr.message);
+      return new Response(JSON.stringify({ error: "Failed to award points" }), { status: 500, headers: corsHeaders });
     }
+
+    // Send email notification to user
+    const categoryLabel = matchedCategory ? (CATEGORY_LABELS[matchedCategory] || matchedCategory) : cleanTaskType;
+    const amountInfo = calcMode === "per_1000" && numAmount
+      ? `<p>Kwota transakcji: <strong>${numAmount.toLocaleString("pl-PL")} zł</strong></p>`
+      : "";
+
+    sendEmail(
+      cleanEmail,
+      `🎉 Otrzymałeś ${points} punktów w NetSzukacz!`,
+      `<div style="font-family: system-ui, sans-serif; max-width: 500px; margin: 0 auto;">
+        <h2 style="color: #f97316;">Gratulacje! 🎉</h2>
+        <p>Przyznano Ci <strong style="font-size: 1.3em; color: #f97316;">${points} punktów</strong> za:</p>
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 0;"><strong>${categoryLabel}</strong></p>
+          <p style="margin: 4px 0 0; color: #666;">Partner: ${matchedPartner.display_name}</p>
+          ${amountInfo}
+        </div>
+        <p>Punkty zostały dodane do Twojego konta. Sprawdź swój stan punktów i dostępne nagrody na <a href="https://wyszukiwarka.lovable.app/rewards" style="color: #f97316;">stronie nagród</a>.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="color: #999; font-size: 12px;">NetSzukacz.pl — Porównywarka cen i finansów</p>
+      </div>`
+    ).catch(console.error); // Fire-and-forget, don't block response
 
     return new Response(
       JSON.stringify({
@@ -132,7 +243,7 @@ Deno.serve(async (req) => {
         partner: matchedPartner.display_name,
         category: matchedCategory,
         calc_mode: calcMode,
-        amount: amount || null,
+        amount: numAmount,
         points_awarded: points,
         ...result,
       }),
@@ -141,7 +252,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("partner-callback error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
