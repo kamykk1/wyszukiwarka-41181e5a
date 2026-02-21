@@ -1,9 +1,12 @@
+import { useState, useEffect } from "react";
 import { TrendingDown, Store, Zap, Shield, Landmark, CreditCard, PiggyBank, Percent } from "lucide-react";
 import { Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import Navbar from "@/components/Navbar";
 import EditableBanner from "@/components/EditableBanner";
 import { stores } from "@/data/mockProducts";
+import { supabase } from "@/integrations/supabase/client";
+import DOMPurify from "dompurify";
 
 const features = [
   { icon: TrendingDown, title: "Najniższe ceny", desc: "Porównujemy ceny z wielu sklepów" },
@@ -19,11 +22,34 @@ const financeCards = [
   { icon: Percent, title: "Cashback", desc: "Zarabiaj procenty od zakupów w sklepach partnerskich", path: "/cashback", color: "text-accent" },
 ];
 
+const defaultHeroHtml = `
+<div class="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent">
+  ⚡ Porównuj ceny z wielu sklepów
+</div>
+<h1 class="mb-4 text-5xl font-black tracking-tight text-gradient md:text-6xl">Znajdź najlepszą cenę</h1>
+<p class="mx-auto mb-10 max-w-lg text-lg text-primary-foreground/60">Przeszukuj oferty z Allegro, Amazon, AliExpress, Temu i innych. Porównuj konta, kredyty i lokaty w jednym miejscu.</p>
+`;
+
 const Index = () => {
+  const [heroHtml, setHeroHtml] = useState<string>(defaultHeroHtml);
+
+  useEffect(() => {
+    const fetchHero = async () => {
+      const { data } = await supabase
+        .from("page_settings")
+        .select("header_html")
+        .eq("id", "home")
+        .single();
+      if (data?.header_html && data.header_html.trim() !== "" && data.header_html !== "<p><br></p>") {
+        setHeroHtml(data.header_html);
+      }
+    };
+    fetchHero();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <EditableBanner pageId="home" />
 
       <section className="gradient-hero relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
@@ -32,17 +58,15 @@ const Index = () => {
         </div>
 
         <div className="container relative mx-auto px-4 py-24 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent">
-            <Zap className="h-3.5 w-3.5" />
-            Porównuj ceny z {stores.filter(s => s.enabled).length}+ sklepów
-          </div>
-
-          <h1 className="mb-4 text-5xl font-black tracking-tight text-gradient md:text-6xl">
-            Znajdź najlepszą cenę
-          </h1>
-          <p className="mx-auto mb-10 max-w-lg text-lg text-primary-foreground/60">
-            Przeszukuj oferty z Allegro, Amazon, AliExpress, Temu i innych. Porównuj konta, kredyty i lokaty w jednym miejscu.
-          </p>
+          <div
+            className="prose prose-sm max-w-none mx-auto mb-6
+              [&_h1]:text-5xl [&_h1]:md:text-6xl [&_h1]:font-black [&_h1]:tracking-tight [&_h1]:text-gradient [&_h1]:mb-4
+              [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:text-primary-foreground [&_h2]:mb-3
+              [&_p]:text-lg [&_p]:text-primary-foreground/60 [&_p]:mb-4 [&_p]:mx-auto [&_p]:max-w-lg
+              [&_a]:text-accent [&_a]:underline
+              [&_strong]:text-primary-foreground"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(heroHtml) }}
+          />
 
           <SearchBar large />
 
