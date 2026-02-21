@@ -839,6 +839,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_username_taken: { Args: { _username: string }; Returns: boolean }
       redeem_reward:
         | { Args: { _reward_id: string }; Returns: Json }
         | { Args: { _reward_id: string; _user_id: string }; Returns: Json }

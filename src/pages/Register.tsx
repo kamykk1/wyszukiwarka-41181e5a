@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Register = () => {
   const [username, setUsername] = useState("");
@@ -18,6 +19,7 @@ const Register = () => {
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [phone, setPhone] = useState("");
+  const [usernameError, setUsernameError] = useState("");
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -25,6 +27,18 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setUsernameError("");
+
+    // Validate username uniqueness
+    if (username.trim()) {
+      const { data: taken } = await supabase.rpc("is_username_taken", { _username: username.trim() });
+      if (taken) {
+        setUsernameError("Ta nazwa użytkownika jest już zajęta");
+        setLoading(false);
+        return;
+      }
+    }
+
     const fullName = `${firstName} ${lastName}`.trim();
     const { error } = await signUp(email, password, fullName, {
       first_name: firstName,
@@ -63,8 +77,9 @@ const Register = () => {
                 <Label htmlFor="username">Login / nazwa użytkownika</Label>
                 <div className="relative mt-1.5">
                   <AtSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="username" placeholder="jankowalski" value={username} onChange={e => setUsername(e.target.value)} className="pl-10" required />
+                  <Input id="username" placeholder="jankowalski" value={username} onChange={e => { setUsername(e.target.value); setUsernameError(""); }} className={`pl-10 ${usernameError ? "border-destructive" : ""}`} required />
                 </div>
+                {usernameError && <p className="text-xs text-destructive mt-1">{usernameError}</p>}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
