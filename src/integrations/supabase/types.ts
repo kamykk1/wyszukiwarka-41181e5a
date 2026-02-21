@@ -771,25 +771,37 @@ export type Database = {
       }
       stores_public: {
         Row: {
+          affiliate_url: string | null
+          cashback_rate: number | null
+          cashback_type: string | null
           color: string | null
           enabled: boolean | null
           id: string | null
           logo: string | null
           name: string | null
+          partner_source: string | null
         }
         Insert: {
+          affiliate_url?: string | null
+          cashback_rate?: number | null
+          cashback_type?: string | null
           color?: string | null
           enabled?: boolean | null
           id?: string | null
           logo?: string | null
           name?: string | null
+          partner_source?: string | null
         }
         Update: {
+          affiliate_url?: string | null
+          cashback_rate?: number | null
+          cashback_type?: string | null
           color?: string | null
           enabled?: boolean | null
           id?: string | null
           logo?: string | null
           name?: string | null
+          partner_source?: string | null
         }
         Relationships: []
       }
