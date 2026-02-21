@@ -64,7 +64,9 @@ const Index = () => {
               [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:text-primary-foreground [&_h2]:mb-3
               [&_p]:text-lg [&_p]:text-primary-foreground/60 [&_p]:mb-4 [&_p]:mx-auto [&_p]:max-w-lg
               [&_a]:text-accent [&_a]:underline
-              [&_strong]:text-primary-foreground"
+              [&_strong]:text-primary-foreground
+              [&_*]:!bg-transparent [&_h1]:!text-gradient [&_h1_strong]:!text-inherit [&_h1_*]:!bg-transparent
+              [&_p_span]:!text-primary-foreground/60 [&_p_span]:!bg-transparent"
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(heroHtml) }}
           />
 
