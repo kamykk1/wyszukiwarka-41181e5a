@@ -98,6 +98,7 @@ Deno.serve(async (req) => {
 
       const finalHtml = template
         .replace(/\{\{subject\}\}/g, subject)
+        .replace(/\{\{name_greeting\}\}/g, userName ? `, ${userName}` : "")
         .replace(/\{\{name\}\}/g, userName)
         .replace(/\{\{message\}\}/g, message.replace(/\n/g, "<br/>"))
         .replace(/\{\{click_button\}\}/g, clickButton);
