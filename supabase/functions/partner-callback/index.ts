@@ -226,16 +226,38 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Failed to award points" }), { status: 500, headers: corsHeaders });
     }
 
-    // Send email notification to user
+    // Fetch email template from DB
+    const { data: tplData } = await supabase
+      .from("email_templates")
+      .select("subject_template, html_template")
+      .eq("id", "partner_points")
+      .maybeSingle();
+
     const categoryLabel = matchedCategory ? (CATEGORY_LABELS[matchedCategory] || matchedCategory) : cleanTaskType;
     const amountInfo = calcMode === "per_1000" && numAmount
       ? `<p>Kwota transakcji: <strong>${numAmount.toLocaleString("pl-PL")} zł</strong></p>`
       : "";
 
-    sendEmail(
-      cleanEmail,
-      `🎉 Otrzymałeś ${points} punktów w NetSzukacz!`,
-      `<div style="font-family: system-ui, sans-serif; max-width: 500px; margin: 0 auto;">
+    const tplVars: Record<string, string> = {
+      points: String(points),
+      category: categoryLabel,
+      partner_name: matchedPartner.display_name,
+      amount_info: amountInfo,
+    };
+
+    let emailSubject: string;
+    let emailHtml: string;
+
+    if (tplData) {
+      emailSubject = tplData.subject_template;
+      emailHtml = tplData.html_template;
+      for (const [key, val] of Object.entries(tplVars)) {
+        emailSubject = emailSubject.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), val);
+        emailHtml = emailHtml.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), val);
+      }
+    } else {
+      emailSubject = `🎉 Otrzymałeś ${points} punktów w NetSzukacz!`;
+      emailHtml = `<div style="font-family: system-ui, sans-serif; max-width: 500px; margin: 0 auto;">
         <h2 style="color: #f97316;">Gratulacje! 🎉</h2>
         <p>Przyznano Ci <strong style="font-size: 1.3em; color: #f97316;">${points} punktów</strong> za:</p>
         <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0;">
@@ -243,11 +265,13 @@ Deno.serve(async (req) => {
           <p style="margin: 4px 0 0; color: #666;">Partner: ${matchedPartner.display_name}</p>
           ${amountInfo}
         </div>
-        <p>Punkty zostały dodane do Twojego konta. Sprawdź swój stan punktów i dostępne nagrody na <a href="https://wyszukiwarka.lovable.app/rewards" style="color: #f97316;">stronie nagród</a>.</p>
+        <p>Punkty zostały dodane do Twojego konta.</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
         <p style="color: #999; font-size: 12px;">NetSzukacz.pl — Porównywarka cen i finansów</p>
-      </div>`
-    ).catch(console.error); // Fire-and-forget, don't block response
+      </div>`;
+    }
+
+    sendEmail(cleanEmail, emailSubject, emailHtml).catch(console.error);
 
     return new Response(
       JSON.stringify({

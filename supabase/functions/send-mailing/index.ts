@@ -62,6 +62,17 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const { campaign_id, subject, message, audience, points_reward, html_template } = await req.json();
 
+    // If no custom template provided, fetch from DB
+    let template = html_template;
+    if (!template) {
+      const { data: tplData } = await supabase
+        .from("email_templates")
+        .select("html_template")
+        .eq("id", "mailing_default")
+        .maybeSingle();
+      template = tplData?.html_template || `<h2>{{subject}}</h2><p>Cześć {{name}}!</p><div>{{message}}</div>{{click_button}}<hr/><p style="color:#999;font-size:12px;">NetSzukacz.pl — porównywarka cen i finansów</p>`;
+    }
+
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, name, first_name")
@@ -74,9 +85,6 @@ Deno.serve(async (req) => {
     const appUrl = supabaseUrl.replace(".supabase.co", "").includes("rsfieaipypagioylevbp")
       ? "https://wyszukiwarka.lovable.app"
       : supabaseUrl;
-
-    // Default template fallback
-    const template = html_template || `<h2>{{subject}}</h2><p>Cześć {{name}}!</p><div>{{message}}</div>{{click_button}}<hr/><p style="color:#999;font-size:12px;">NetSzukacz.pl — porównywarka cen i finansów</p>`;
 
     let sent = 0;
     for (const profile of profiles) {

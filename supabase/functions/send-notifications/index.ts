@@ -29,13 +29,20 @@ async function sendEmail(to: string, subject: string, html: string) {
   }
 }
 
+function renderTemplate(template: string, vars: Record<string, string>): string {
+  let result = template;
+  for (const [key, val] of Object.entries(vars)) {
+    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), val);
+  }
+  return result;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Authenticate cron invocation
     const cronSecret = req.headers.get("x-cron-secret");
     if (!cronSecret || cronSecret !== Deno.env.get("CRON_SECRET")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -47,6 +54,15 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Fetch email templates
+    const { data: tplData } = await supabase
+      .from("email_templates")
+      .select("id, subject_template, html_template")
+      .in("id", ["threshold_reached", "new_reward"]);
+
+    const tplMap = new Map<string, { subject: string; html: string }>();
+    (tplData || []).forEach((t: any) => tplMap.set(t.id, { subject: t.subject_template, html: t.html_template }));
 
     const results: string[] = [];
 
@@ -97,14 +113,19 @@ Deno.serve(async (req) => {
               reference_id: String(threshold),
             });
 
-            await sendEmail(
-              authUser.user.email,
-              `🎉 Osiągnięto ${threshold} punktów w SmartPrice!`,
-              `<h2>Gratulacje${profile.name ? `, ${profile.name}` : ""}!</h2>
-               <p>Zdobyłeś już <strong>${points.total_earned}</strong> punktów w programie SmartPrice.</p>
-               <p>Sprawdź dostępne nagrody w naszym katalogu!</p>`
-            );
+            const tpl = tplMap.get("threshold_reached");
+            const vars = {
+              threshold: String(threshold),
+              name_greeting: profile.name ? `, ${profile.name}` : "",
+              total_earned: String(points.total_earned),
+            };
 
+            const emailSubject = tpl ? renderTemplate(tpl.subject, vars) : `🎉 Osiągnięto ${threshold} punktów!`;
+            const emailHtml = tpl
+              ? renderTemplate(tpl.html, vars)
+              : `<h2>Gratulacje${vars.name_greeting}!</h2><p>Zdobyłeś już <strong>${points.total_earned}</strong> punktów.</p>`;
+
+            await sendEmail(authUser.user.email, emailSubject, emailHtml);
             results.push(`Threshold email → ${authUser.user.email}: ${points.total_earned}/${threshold}`);
           }
         }
@@ -129,15 +150,19 @@ Deno.serve(async (req) => {
                 reference_id: reward.id,
               });
 
-              await sendEmail(
-                authUser.user.email,
-                `🎁 Nowa nagroda w SmartPrice: ${reward.name}`,
-                `<h2>Nowa nagroda dostępna!</h2>
-                 <p><strong>${reward.name}</strong> — ${reward.points_cost} punktów</p>
-                 ${reward.description ? `<p>${reward.description}</p>` : ""}
-                 <p>Zaloguj się i odbierz swoją nagrodę!</p>`
-              );
+              const tpl = tplMap.get("new_reward");
+              const vars = {
+                reward_name: reward.name,
+                points_cost: String(reward.points_cost),
+                reward_description: reward.description ? `<p>${reward.description}</p>` : "",
+              };
 
+              const emailSubject = tpl ? renderTemplate(tpl.subject, vars) : `🎁 Nowa nagroda: ${reward.name}`;
+              const emailHtml = tpl
+                ? renderTemplate(tpl.html, vars)
+                : `<h2>Nowa nagroda!</h2><p><strong>${reward.name}</strong> — ${reward.points_cost} pkt</p>`;
+
+              await sendEmail(authUser.user.email, emailSubject, emailHtml);
               results.push(`New reward email → ${authUser.user.email}: "${reward.name}"`);
             }
           }
