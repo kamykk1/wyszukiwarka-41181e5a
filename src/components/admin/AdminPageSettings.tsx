@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Loader2, Save, FileText, Eye, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 
 interface PageSetting {
   id: string;
@@ -20,6 +22,18 @@ const pageLabels: Record<string, string> = {
   cashback: "Cashback",
   rewards: "Nagrody",
   leaderboard: "Ranking",
+};
+
+const quillModules = {
+  toolbar: [
+    [{ header: [1, 2, 3, false] }],
+    ["bold", "italic", "underline", "strike"],
+    [{ color: [] }, { background: [] }],
+    [{ align: [] }],
+    [{ list: "ordered" }, { list: "bullet" }],
+    ["link", "image"],
+    ["clean"],
+  ],
 };
 
 const AdminPageSettings = () => {
@@ -57,17 +71,29 @@ const AdminPageSettings = () => {
   return (
     <div className="rounded-xl border bg-card p-6 shadow-product">
       <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-        <FileText className="h-5 w-5" /> Edycja treści stron (HTML)
+        <FileText className="h-5 w-5" /> Edycja treści stron (WYSIWYG)
       </h2>
       <div className="space-y-6">
         {settings.map(s => (
           <div key={s.id} className="space-y-2 rounded-lg border p-4">
             <Label className="text-sm font-semibold">{pageLabels[s.id] || s.id}</Label>
-            <Tabs defaultValue="code" className="w-full">
+            <Tabs defaultValue="wysiwyg" className="w-full">
               <TabsList className="mb-2">
+                <TabsTrigger value="wysiwyg" className="gap-1.5 text-xs"><Eye className="h-3.5 w-3.5" />Edytor</TabsTrigger>
                 <TabsTrigger value="code" className="gap-1.5 text-xs"><Code className="h-3.5 w-3.5" />HTML</TabsTrigger>
                 <TabsTrigger value="preview" className="gap-1.5 text-xs"><Eye className="h-3.5 w-3.5" />Podgląd</TabsTrigger>
               </TabsList>
+              <TabsContent value="wysiwyg">
+                <div className="bg-background rounded-lg border">
+                  <ReactQuill
+                    theme="snow"
+                    value={s.header_html}
+                    onChange={(val) => updateHtml(s.id, val)}
+                    modules={quillModules}
+                    className="min-h-[160px]"
+                  />
+                </div>
+              </TabsContent>
               <TabsContent value="code">
                 <Textarea
                   value={s.header_html}

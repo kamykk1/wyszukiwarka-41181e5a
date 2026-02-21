@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LogIn, Mail, Lock, UserCircle } from "lucide-react";
+import { LogIn, Lock, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,39 +20,22 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    let emailToUse = identifier;
+    let emailToUse = identifier.trim();
 
-    // If not an email, look up the username
-    if (!identifier.includes("@")) {
+    // If not an email, look up the username to find email
+    if (!emailToUse.includes("@")) {
       const { data } = await supabase
         .from("profiles")
-        .select("user_id")
-        .eq("username", identifier)
+        .select("email")
+        .eq("username", emailToUse)
         .maybeSingle();
 
-      if (!data) {
+      if (!data?.email) {
         toast.error("Nie znaleziono użytkownika o podanym loginie");
         setLoading(false);
         return;
       }
-
-      // Get email from auth via admin — we need to use a workaround:
-      // Look up email stored in profile name or use the user_id approach
-      // Actually, we need to get email. Let's query auth users via edge function or store email in profiles.
-      // Simplest: store email in profile on signup (already stored via auth).
-      // We'll look up via a different approach - get all profiles matching
-      const { data: userData } = await supabase.auth.admin?.getUserById(data.user_id) || { data: null };
-      
-      // Fallback: since we can't use admin API from client, let's use a simpler approach
-      // We'll try signing in with the identifier as email first, then as username
-      // For username login, we need to store the email in the profiles table
-      // Let's query the user's email from a public column or use an edge function
-      
-      // Simplest solution: try to find email from the user metadata
-      // Actually the cleanest way is to just store email in profiles
-      toast.error("Nie znaleziono użytkownika o podanym loginie");
-      setLoading(false);
-      return;
+      emailToUse = data.email;
     }
 
     const { error } = await signIn(emailToUse, password);
