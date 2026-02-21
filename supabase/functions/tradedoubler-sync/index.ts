@@ -183,8 +183,15 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const legacyToken = Deno.env.get("TRADEDOUBLER_TOKEN");
+    const cronSecret = Deno.env.get("CRON_SECRET");
 
-    await authenticateAdmin(req, supabaseUrl, anonKey);
+    // Allow cron calls with x-cron-secret header or standard admin auth
+    const cronHeader = req.headers.get("x-cron-secret");
+    if (cronHeader && cronSecret && cronHeader === cronSecret) {
+      // Cron bypass - no admin auth needed
+    } else {
+      await authenticateAdmin(req, supabaseUrl, anonKey);
+    }
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const url = new URL(req.url);
