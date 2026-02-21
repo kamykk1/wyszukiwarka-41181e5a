@@ -10,6 +10,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator";
 
+const validateEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const validatePostalCode = (v: string) => !v || /^\d{2}-\d{3}$/.test(v);
+const validatePhone = (v: string) => !v || /^(\+?\d[\d\s-]{6,})$/.test(v);
+
 const Register = () => {
   const [username, setUsername] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -22,11 +26,23 @@ const Register = () => {
   const [phone, setPhone] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const { signUp } = useAuth();
   const navigate = useNavigate();
 
+  const mark = (f: string) => setTouched(p => ({ ...p, [f]: true }));
+
+  const emailErr = touched.email && email && !validateEmail(email) ? "Nieprawidłowy format email" : "";
+  const postalErr = touched.postalCode && postalCode && !validatePostalCode(postalCode) ? "Format: XX-XXX" : "";
+  const phoneErr = touched.phone && phone && !validatePhone(phone) ? "Nieprawidłowy numer telefonu" : "";
+  const passwordErr = touched.password && password && password.length < 8 ? "Min. 8 znaków" : "";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateEmail(email) || (postalCode && !validatePostalCode(postalCode)) || (phone && !validatePhone(phone))) {
+      toast.error("Popraw błędy w formularzu");
+      return;
+    }
     setLoading(true);
     setUsernameError("");
 
@@ -99,23 +115,26 @@ const Register = () => {
                 <Label htmlFor="email">Email</Label>
                 <div className="relative mt-1.5">
                   <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="email" type="email" placeholder="jan@example.com" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" required />
+                  <Input id="email" type="email" placeholder="jan@example.com" value={email} onChange={e => setEmail(e.target.value)} onBlur={() => mark("email")} className={`pl-10 ${emailErr ? "border-destructive" : ""}`} required />
                 </div>
+                {emailErr && <p className="text-xs text-destructive mt-1">{emailErr}</p>}
               </div>
               <div>
                 <Label htmlFor="password">Hasło</Label>
                 <div className="relative mt-1.5">
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="password" type="password" placeholder="Min. 8 znaków" value={password} onChange={e => setPassword(e.target.value)} className="pl-10" minLength={8} required />
+                  <Input id="password" type="password" placeholder="Min. 8 znaków" value={password} onChange={e => setPassword(e.target.value)} onBlur={() => mark("password")} className={`pl-10 ${passwordErr ? "border-destructive" : ""}`} minLength={8} required />
                 </div>
+                {passwordErr && <p className="text-xs text-destructive mt-1">{passwordErr}</p>}
                 <PasswordStrengthIndicator password={password} />
               </div>
 
               <div>
                 <Label htmlFor="phone">Numer telefonu (opcjonalnie)</Label>
                 <div className="relative mt-1.5">
-                  <Input id="phone" type="tel" placeholder="+48 123 456 789" value={phone} onChange={e => setPhone(e.target.value)} />
+                  <Input id="phone" type="tel" placeholder="+48 123 456 789" value={phone} onChange={e => setPhone(e.target.value)} onBlur={() => mark("phone")} className={phoneErr ? "border-destructive" : ""} />
                 </div>
+                {phoneErr && <p className="text-xs text-destructive mt-1">{phoneErr}</p>}
               </div>
 
               <div className="border-t pt-4">
@@ -125,9 +144,10 @@ const Register = () => {
                 <div className="space-y-3">
                   <Input placeholder="Ulica i numer" value={street} onChange={e => setStreet(e.target.value)} />
                   <div className="grid grid-cols-2 gap-3">
-                    <Input placeholder="Kod pocztowy" value={postalCode} onChange={e => setPostalCode(e.target.value)} />
+                    <Input placeholder="Kod pocztowy" value={postalCode} onChange={e => setPostalCode(e.target.value)} onBlur={() => mark("postalCode")} className={postalErr ? "border-destructive" : ""} />
                     <Input placeholder="Miasto" value={city} onChange={e => setCity(e.target.value)} />
                   </div>
+                  {postalErr && <p className="text-xs text-destructive mt-1">{postalErr}</p>}
                 </div>
               </div>
 
