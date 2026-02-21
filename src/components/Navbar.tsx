@@ -170,7 +170,7 @@ const Navbar = () => {
         <Link to="/" className="flex items-center gap-3">
           <img src={logo} alt="NetSzukacz" className="h-20 w-auto rounded-lg" />
           <div className="hidden sm:flex flex-col leading-tight">
-            <span className="text-lg font-black text-foreground">netszukacz.pl</span>
+            <span className="text-lg font-black text-accent">netszukacz.pl</span>
             <span className="text-[10px] text-muted-foreground">otrzymuj punkty za codzienne czynności</span>
           </div>
         </Link>
