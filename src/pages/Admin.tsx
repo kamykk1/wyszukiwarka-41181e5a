@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift, ShoppingBag, Plug, Landmark, FileText, History, BarChart3 } from "lucide-react";
+import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift, ShoppingBag, Plug, Landmark, FileText, History, BarChart3, MailOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminStores from "@/components/admin/AdminStores";
 import AdminMailing from "@/components/admin/AdminMailing";
+import AdminEmailTemplates from "@/components/admin/AdminEmailTemplates";
 import AdminRewards from "@/components/admin/AdminRewards";
 import AdminRedemptions from "@/components/admin/AdminRedemptions";
 import AdminPartners from "@/components/admin/AdminPartners";
@@ -26,6 +27,7 @@ const tabs = [
   { id: "redemptions", label: "Zamówienia", icon: ShoppingBag },
   { id: "transactions", label: "Transakcje pkt", icon: History },
   { id: "mailing", label: "Mailing", icon: Mail },
+  { id: "email_templates", label: "Szablony email", icon: MailOpen },
 ];
 
 const Admin = () => {
@@ -100,6 +102,7 @@ const Admin = () => {
             {activeTab === "redemptions" && <AdminRedemptions />}
             {activeTab === "transactions" && <AdminTransactions />}
             {activeTab === "mailing" && <AdminMailing />}
+            {activeTab === "email_templates" && <AdminEmailTemplates />}
           </div>
         </div>
       </div>

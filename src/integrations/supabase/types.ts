@@ -38,6 +38,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_templates: {
+        Row: {
+          description: string | null
+          html_template: string
+          id: string
+          name: string
+          subject_template: string
+          updated_at: string
+          variables: string[]
+        }
+        Insert: {
+          description?: string | null
+          html_template?: string
+          id: string
+          name: string
+          subject_template?: string
+          updated_at?: string
+          variables?: string[]
+        }
+        Update: {
+          description?: string | null
+          html_template?: string
+          id?: string
+          name?: string
+          subject_template?: string
+          updated_at?: string
+          variables?: string[]
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
