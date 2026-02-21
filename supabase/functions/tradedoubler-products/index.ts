@@ -6,6 +6,33 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// --- Rate limiting (per-isolate, sliding window) ---
+const RATE_LIMIT = 30; // max requests per window per IP
+const RATE_WINDOW_MS = 60_000; // 1 minute
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now >= entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return false;
+  }
+
+  entry.count++;
+  if (entry.count > RATE_LIMIT) return true;
+  return false;
+}
+
+// Periodically clean up stale entries (every 5 min)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitMap) {
+    if (now >= entry.resetAt) rateLimitMap.delete(ip);
+  }
+}, 300_000);
+
 const TD_API_BASE = "https://api.tradedoubler.com/1.0";
 
 async function getTDAccessToken(): Promise<string | null> {
@@ -72,12 +99,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Rate limiting by IP
+    const clientIp =
+      req.headers.get("cf-connecting-ip") ||
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      "unknown";
+    if (isRateLimited(clientIp)) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Try again in a minute.", products: [], total: 0 }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const url = new URL(req.url);
     const query = url.searchParams.get("q") || "";
     const page = parseInt(url.searchParams.get("page") || "1");
     const pageSize = Math.min(parseInt(url.searchParams.get("pageSize") || "20"), 50);
 
-    if (!query || query.length < 2) {
+    if (!query || query.length < 2 || query.length > 100) {
       return new Response(
         JSON.stringify({ products: [], total: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
