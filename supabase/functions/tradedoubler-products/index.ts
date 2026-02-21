@@ -50,10 +50,22 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Validate apikey header
+    // Validate apikey header - must be a valid Supabase anon key for this project
     const apiKey = req.headers.get("apikey");
-    const expectedKey = Deno.env.get("SUPABASE_ANON_KEY");
-    if (!apiKey || apiKey !== expectedKey) {
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    // Verify the key is a JWT referencing this project
+    try {
+      const payload = JSON.parse(atob(apiKey.split(".")[1]));
+      const projectRef = Deno.env.get("SUPABASE_URL")?.match(/https:\/\/([^.]+)/)?.[1];
+      if (payload.ref !== projectRef || payload.role !== "anon") {
+        throw new Error("Invalid key");
+      }
+    } catch {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
