@@ -2,6 +2,7 @@ import { TrendingDown, Store, Zap, Shield, Landmark, CreditCard, PiggyBank, Perc
 import { Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import Navbar from "@/components/Navbar";
+import EditableBanner from "@/components/EditableBanner";
 import { stores } from "@/data/mockProducts";
 
 const features = [
@@ -22,6 +23,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      <EditableBanner pageId="home" />
 
       <section className="gradient-hero relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">

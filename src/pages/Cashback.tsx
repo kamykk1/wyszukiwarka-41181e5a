@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Percent, ExternalLink, TrendingUp, Loader2, Store } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
+import EditableBanner from "@/components/EditableBanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,6 +71,7 @@ const Cashback = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      <EditableBanner pageId="cashback" />
 
       {/* Hero */}
       <section className="gradient-hero relative overflow-hidden">
