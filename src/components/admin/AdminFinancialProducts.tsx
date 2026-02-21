@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Loader2, Plus, Pencil, Trash2, Save, X, Landmark, CreditCard, PiggyBank, Coins, Key, History } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Loader2, Plus, Pencil, Trash2, Save, X, Landmark, CreditCard, PiggyBank, Coins, Key, History, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,6 +89,30 @@ const AdminFinancialProducts = () => {
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyStatusFilter, setHistoryStatusFilter] = useState("all");
+  const [historyUserFilter, setHistoryUserFilter] = useState("");
+  const [historySortField, setHistorySortField] = useState<"created_at" | "points_awarded">("created_at");
+  const [historySortAsc, setHistorySortAsc] = useState(false);
+
+  const filteredHistory = useMemo(() => {
+    let data = [...historyData];
+    if (historyStatusFilter !== "all") data = data.filter(t => t.status === historyStatusFilter);
+    if (historyUserFilter.trim()) {
+      const q = historyUserFilter.toLowerCase();
+      data = data.filter(t => (t.email || "").toLowerCase().includes(q) || (t.user_name || "").toLowerCase().includes(q));
+    }
+    data.sort((a, b) => {
+      const av = historySortField === "points_awarded" ? (a.points_awarded || 0) : new Date(a.created_at).getTime();
+      const bv = historySortField === "points_awarded" ? (b.points_awarded || 0) : new Date(b.created_at).getTime();
+      return historySortAsc ? av - bv : bv - av;
+    });
+    return data;
+  }, [historyData, historyStatusFilter, historyUserFilter, historySortField, historySortAsc]);
+
+  const toggleHistorySort = (field: "created_at" | "points_awarded") => {
+    if (historySortField === field) setHistorySortAsc(p => !p);
+    else { setHistorySortField(field); setHistorySortAsc(false); }
+  };
 
   const openHistory = async (product: Product) => {
     setHistoryProduct(product);
@@ -547,7 +571,7 @@ const AdminFinancialProducts = () => {
       </Dialog>
 
       {/* Product Points History Dialog */}
-      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+      <Dialog open={historyDialogOpen} onOpenChange={(open) => { setHistoryDialogOpen(open); if (!open) { setHistoryStatusFilter("all"); setHistoryUserFilter(""); } }}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -564,23 +588,44 @@ const AdminFinancialProducts = () => {
             </div>
           ) : (
             <div>
+              {/* Filters */}
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <Input
+                  placeholder="Szukaj użytkownika…"
+                  value={historyUserFilter}
+                  onChange={e => setHistoryUserFilter(e.target.value)}
+                  className="h-8 w-48 text-xs"
+                />
+                <Select value={historyStatusFilter} onValueChange={setHistoryStatusFilter}>
+                  <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Wszystkie statusy</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="mb-3 flex items-center gap-4 text-sm text-muted-foreground">
-                <span>Łącznie: <strong className="text-foreground">{historyData.length}</strong> transakcji</span>
-                <span>Suma: <strong className="text-accent">{historyData.reduce((s, t) => s + (t.points_awarded || 0), 0)} pkt</strong></span>
+                <span>Wyświetlono: <strong className="text-foreground">{filteredHistory.length}</strong> z {historyData.length}</span>
+                <span>Suma: <strong className="text-accent">{filteredHistory.reduce((s, t) => s + (t.points_awarded || 0), 0)} pkt</strong></span>
               </div>
               <div className="overflow-x-auto rounded-lg border">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-xs font-medium text-muted-foreground bg-muted/50">
                       <th className="px-3 py-2">Użytkownik</th>
-                      <th className="px-3 py-2">Punkty</th>
+                      <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleHistorySort("points_awarded")}>
+                        <span className="inline-flex items-center gap-1">Punkty <ArrowUpDown className="h-3 w-3" /></span>
+                      </th>
                       <th className="px-3 py-2">Typ</th>
                       <th className="px-3 py-2">Status</th>
-                      <th className="px-3 py-2">Data</th>
+                      <th className="px-3 py-2 cursor-pointer select-none" onClick={() => toggleHistorySort("created_at")}>
+                        <span className="inline-flex items-center gap-1">Data <ArrowUpDown className="h-3 w-3" /></span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {historyData.map((t: any) => (
+                    {filteredHistory.map((t: any) => (
                       <tr key={t.id} className="border-b last:border-0">
                         <td className="px-3 py-2">
                           <div className="text-foreground text-xs font-medium">{t.user_name || "—"}</div>
