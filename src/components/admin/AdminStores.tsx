@@ -244,7 +244,7 @@ const AdminStores = () => {
     );
   }
 
-  const callbackUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tradedoubler-callback`;
+  const callbackUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tradedoubler-callback?secret=cba548542a41d2d2`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
