@@ -23,7 +23,6 @@
  *    https://track.tradedoubler.com/track?program=XXXXX&epi1=USER_EMAIL&...
  */
 
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
