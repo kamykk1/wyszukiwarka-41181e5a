@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import DOMPurify from "dompurify";
-import { CreditCard, ExternalLink, Calculator, Loader2, Search, TrendingDown } from "lucide-react";
+import { CreditCard, ExternalLink, Calculator, Loader2, Search, TrendingDown, Star } from "lucide-react";
 import { formatDescription } from "@/lib/formatDescription";
 import { useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -23,6 +23,7 @@ interface FinancialProduct {
   features: string[];
   affiliate_url: string | null;
   image_url: string | null;
+  points_reward: number | null;
   is_active: boolean;
   category: string;
 }
@@ -148,6 +149,12 @@ const Kredyty = () => {
                     {product.features.map((f: string, i: number) => (
                       <Badge key={i} variant="outline" className="text-xs">{f}</Badge>
                     ))}
+                  </div>
+                )}
+                {product.points_reward != null && product.points_reward > 0 && (
+                  <div className="mb-3 flex items-center gap-1.5 rounded-lg bg-accent/10 px-3 py-2 text-sm font-semibold text-accent">
+                    <Star className="h-4 w-4" />
+                    +{product.points_reward} pkt za wniosek
                   </div>
                 )}
                 <Button size="sm" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => handleClick(product)}>
