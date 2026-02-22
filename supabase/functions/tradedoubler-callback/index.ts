@@ -38,6 +38,26 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Validate shared secret
+    const webhookSecret = Deno.env.get("TRADEDOUBLER_WEBHOOK_SECRET");
+    if (!webhookSecret) {
+      console.error("TRADEDOUBLER_WEBHOOK_SECRET not configured");
+      return new Response(JSON.stringify({ success: false, error: "Server misconfiguration" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Check secret from header or query param
+    const providedSecret = req.headers.get("x-webhook-secret") || new URL(req.url).searchParams.get("secret");
+    if (providedSecret !== webhookSecret) {
+      console.warn("Invalid or missing webhook secret");
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
