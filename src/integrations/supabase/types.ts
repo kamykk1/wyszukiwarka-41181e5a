@@ -515,6 +515,65 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          points_awarded_referred: number
+          points_awarded_referrer: number
+          referral_code_id: string
+          referred_user_id: string
+          referrer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          points_awarded_referred?: number
+          points_awarded_referrer?: number
+          referral_code_id: string
+          referred_user_id: string
+          referrer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          points_awarded_referred?: number
+          points_awarded_referrer?: number
+          referral_code_id?: string
+          referred_user_id?: string
+          referrer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referral_code_id_fkey"
+            columns: ["referral_code_id"]
+            isOneToOne: false
+            referencedRelation: "referral_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reward_redemptions: {
         Row: {
           created_at: string
@@ -556,6 +615,8 @@ export type Database = {
           id: string
           point_value_pln: number
           purchase_points: number
+          referral_points_referred: number
+          referral_points_referrer: number
           updated_at: string
         }
         Insert: {
@@ -563,6 +624,8 @@ export type Database = {
           id?: string
           point_value_pln?: number
           purchase_points?: number
+          referral_points_referred?: number
+          referral_points_referrer?: number
           updated_at?: string
         }
         Update: {
@@ -570,6 +633,8 @@ export type Database = {
           id?: string
           point_value_pln?: number
           purchase_points?: number
+          referral_points_referred?: number
+          referral_points_referrer?: number
           updated_at?: string
         }
         Relationships: []
@@ -872,6 +937,7 @@ export type Database = {
             Returns: Json
           }
       get_email_by_username: { Args: { _username: string }; Returns: string }
+      get_or_create_referral_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -880,6 +946,10 @@ export type Database = {
         Returns: boolean
       }
       is_username_taken: { Args: { _username: string }; Returns: boolean }
+      process_referral: {
+        Args: { _referral_code: string; _referred_user_id: string }
+        Returns: Json
+      }
       redeem_reward:
         | { Args: { _reward_id: string }; Returns: Json }
         | { Args: { _reward_id: string; _user_id: string }; Returns: Json }

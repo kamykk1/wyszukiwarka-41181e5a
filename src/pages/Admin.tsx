@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift, ShoppingBag, Plug, Landmark, FileText, History, BarChart3, MailOpen } from "lucide-react";
+import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift, ShoppingBag, Plug, Landmark, FileText, History, BarChart3, MailOpen, UserPlus } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AdminUsers from "@/components/admin/AdminUsers";
@@ -13,6 +13,7 @@ import AdminFinancialProducts from "@/components/admin/AdminFinancialProducts";
 import AdminPageSettings from "@/components/admin/AdminPageSettings";
 import AdminTransactions from "@/components/admin/AdminTransactions";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import AdminReferrals from "@/components/admin/AdminReferrals";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +27,7 @@ const tabs = [
   { id: "rewards", label: "Nagrody", icon: Gift },
   { id: "redemptions", label: "Zamówienia", icon: ShoppingBag },
   { id: "transactions", label: "Transakcje pkt", icon: History },
+  { id: "referrals", label: "Polecenia", icon: UserPlus },
   { id: "mailing", label: "Mailing", icon: Mail },
   { id: "email_templates", label: "Szablony email", icon: MailOpen },
 ];
@@ -101,6 +103,7 @@ const Admin = () => {
             {activeTab === "rewards" && <AdminRewards />}
             {activeTab === "redemptions" && <AdminRedemptions />}
             {activeTab === "transactions" && <AdminTransactions />}
+            {activeTab === "referrals" && <AdminReferrals />}
             {activeTab === "mailing" && <AdminMailing />}
             {activeTab === "email_templates" && <AdminEmailTemplates />}
           </div>
