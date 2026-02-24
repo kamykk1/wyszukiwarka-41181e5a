@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DOMPurify from "dompurify";
+import FortuneWheel from "@/components/FortuneWheel";
 
 interface CashbackStore {
   id: string;
@@ -125,27 +126,31 @@ const Cashback = () => {
 
       {/* How it works - blue accent bg */}
       <section className="bg-accent/10 border-b">
-        <div className="container mx-auto px-4 py-10">
-          <div className="grid gap-6 sm:grid-cols-3 text-center">
+        <div className="container mx-auto px-4 py-4">
+          <div className="grid gap-3 sm:grid-cols-3 text-center">
             {[
               { step: "1", title: "Wybierz sklep", desc: "Znajdź sklep z najwyższym cashbackiem na tej liście" },
               { step: "2", title: "Kliknij link", desc: "Przejdź do sklepu przez nasz link partnerski" },
               { step: "3", title: "Zdobądź punkty", desc: "Po zakupie otrzymujesz cashback w postaci punktów" },
             ].map(({ step, title, desc }) => (
-              <div key={step} className="flex flex-col items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground font-black text-lg">
+              <div key={step} className="flex items-center gap-2 justify-center sm:flex-col">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground font-bold text-xs shrink-0">
                   {step}
                 </div>
-                <h3 className="font-bold text-foreground">{title}</h3>
-                <p className="text-sm text-muted-foreground">{desc}</p>
+                <div className="sm:text-center">
+                  <h3 className="text-sm font-bold text-foreground">{title}</h3>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Stores grid */}
+      {/* Stores grid + wheel */}
       <section className="container mx-auto px-4 py-12">
+        <div className="flex flex-col gap-8 lg:flex-row">
+          <div className="flex-1">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-foreground">Sklepy z cashbackiem</h2>
@@ -231,6 +236,15 @@ const Cashback = () => {
             ))}
           </div>
         )}
+          </div>
+
+          {/* Sidebar: Fortune Wheel */}
+          <div className="w-full lg:w-72 flex-shrink-0">
+            <div className="lg:sticky lg:top-4">
+              <FortuneWheel />
+            </div>
+          </div>
+        </div>
       </section>
 
       <footer className="border-t bg-card py-8 text-center text-sm text-muted-foreground">

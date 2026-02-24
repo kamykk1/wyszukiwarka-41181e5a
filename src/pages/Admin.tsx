@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift, ShoppingBag, Plug, Landmark, FileText, History, BarChart3, MailOpen, UserPlus } from "lucide-react";
+import { Users, Store, Mail, ChevronRight, ShieldAlert, Loader2, Gift, ShoppingBag, Plug, Landmark, FileText, History, BarChart3, MailOpen, UserPlus, CircleDot } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AdminUsers from "@/components/admin/AdminUsers";
@@ -14,6 +14,7 @@ import AdminPageSettings from "@/components/admin/AdminPageSettings";
 import AdminTransactions from "@/components/admin/AdminTransactions";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminReferrals from "@/components/admin/AdminReferrals";
+import AdminWheel from "@/components/admin/AdminWheel";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
@@ -30,6 +31,7 @@ const tabs = [
   { id: "referrals", label: "Polecenia", icon: UserPlus },
   { id: "mailing", label: "Mailing", icon: Mail },
   { id: "email_templates", label: "Szablony email", icon: MailOpen },
+  { id: "wheel", label: "Koło fortuny", icon: CircleDot },
 ];
 
 const Admin = () => {
@@ -106,6 +108,7 @@ const Admin = () => {
             {activeTab === "referrals" && <AdminReferrals />}
             {activeTab === "mailing" && <AdminMailing />}
             {activeTab === "email_templates" && <AdminEmailTemplates />}
+            {activeTab === "wheel" && <AdminWheel />}
           </div>
         </div>
       </div>
