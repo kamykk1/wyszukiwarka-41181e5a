@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     const { data: tplData } = await supabase
       .from("email_templates")
       .select("id, subject_template, html_template")
-      .in("id", ["threshold_reached", "new_reward"]);
+      .in("id", ["threshold_reached", "new_reward", "streak_expiring"]);
 
     const tplMap = new Map<string, { subject: string; html: string }>();
     (tplData || []).forEach((t: any) => tplMap.set(t.id, { subject: t.subject_template, html: t.html_template }));
@@ -168,7 +168,61 @@ Deno.serve(async (req) => {
           }
         }
       }
-    }
+
+      // --- Streak expiring notifications ---
+      // Check if user has a streak >= 3 and last_activity_date = yesterday (i.e. they need to act TODAY)
+      const { data: streakData } = await supabase
+        .from("user_streaks")
+        .select("current_streak, last_activity_date")
+        .eq("user_id", profile.user_id)
+        .maybeSingle();
+
+      if (streakData && streakData.current_streak >= 3) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const lastActivity = new Date(streakData.last_activity_date);
+        lastActivity.setHours(0, 0, 0, 0);
+        const diffDays = Math.floor((today.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+
+        // If last activity was yesterday, streak is at risk today
+        if (diffDays === 1) {
+          const todayStr = today.toISOString().split("T")[0];
+          const { data: alreadySent } = await supabase
+            .from("notification_log")
+            .select("id")
+            .eq("user_id", profile.user_id)
+            .eq("type", "streak_expiring")
+            .eq("reference_id", todayStr)
+            .maybeSingle();
+
+          if (!alreadySent) {
+            const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
+            if (authUser?.user?.email) {
+              await supabase.from("notification_log").insert({
+                user_id: profile.user_id,
+                type: "streak_expiring",
+                reference_id: todayStr,
+              });
+
+              const tpl = tplMap.get("streak_expiring");
+              const vars = {
+                streak_days: String(streakData.current_streak),
+                name_greeting: profile.name ? `, ${profile.name}` : "",
+              };
+
+              const emailSubject = tpl
+                ? renderTemplate(tpl.subject, vars)
+                : `🔥 Twoja seria ${streakData.current_streak} dni wygasa dziś!`;
+              const emailHtml = tpl
+                ? renderTemplate(tpl.html, vars)
+                : `<h2>Nie trać swojej serii${vars.name_greeting}!</h2><p>Masz serię <strong>${streakData.current_streak} dni</strong> aktywności. Wejdź dziś na stronę, żeby jej nie stracić!</p><p><a href="https://wyszukiwarka.lovable.app/moje-punkty">Sprawdź swoje punkty →</a></p>`;
+
+              await sendEmail(authUser.user.email, emailSubject, emailHtml);
+              results.push(`Streak expiring email → ${authUser.user.email}: ${streakData.current_streak} days`);
+            }
+          }
+        }
+      }
 
     return new Response(
       JSON.stringify({ success: true, notifications_sent: results.length, details: results }),
