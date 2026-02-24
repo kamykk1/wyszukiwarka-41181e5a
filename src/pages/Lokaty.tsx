@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClickPoints } from "@/hooks/useClickPoints";
+import GuestBenefitsBanner from "@/components/GuestBenefitsBanner";
 
 interface FinancialProduct {
   id: string;
@@ -81,6 +82,8 @@ const Lokaty = () => {
             </>
           )}
         </div>
+
+        {!user && <GuestBenefitsBanner />}
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>

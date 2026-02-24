@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClickPoints } from "@/hooks/useClickPoints";
+import GuestBenefitsBanner from "@/components/GuestBenefitsBanner";
 
 interface FinancialProduct {
   id: string;
@@ -97,6 +98,8 @@ const Kredyty = () => {
             </>
           )}
         </div>
+
+        {!user && <GuestBenefitsBanner />}
 
         <Tabs value={activeTab} onValueChange={setTab} className="mx-auto mb-8 max-w-lg">
           <TabsList className="w-full grid grid-cols-3">
