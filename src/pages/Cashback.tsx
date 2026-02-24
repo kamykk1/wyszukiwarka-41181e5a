@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DOMPurify from "dompurify";
-import FortuneWheel from "@/components/FortuneWheel";
+
 
 interface CashbackStore {
   id: string;
@@ -93,31 +93,31 @@ const Cashback = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      {/* Hero - editable from admin */}
+      {/* Hero - compact */}
       <section className="gradient-hero relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-10 h-72 w-72 rounded-full bg-accent blur-3xl" />
-          <div className="absolute bottom-10 right-20 h-96 w-96 rounded-full bg-accent/50 blur-3xl" />
+          <div className="absolute top-10 left-10 h-48 w-48 rounded-full bg-accent blur-3xl" />
+          <div className="absolute bottom-5 right-20 h-64 w-64 rounded-full bg-accent/50 blur-3xl" />
         </div>
-        <div className="container relative mx-auto px-4 py-20 text-center">
+        <div className="container relative mx-auto px-4 py-8 text-center">
           <div
-            className="prose prose-sm max-w-none mx-auto mb-6
-              [&_h1]:text-4xl [&_h1]:md:text-5xl [&_h1]:font-black [&_h1]:tracking-tight [&_h1]:text-gradient [&_h1]:mb-4
-              [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:text-primary-foreground [&_h2]:mb-3
-              [&_p]:text-lg [&_p]:text-primary-foreground/60 [&_p]:mb-4 [&_p]:mx-auto [&_p]:max-w-2xl
+            className="prose prose-sm max-w-none mx-auto mb-3
+              [&_h1]:text-2xl [&_h1]:md:text-3xl [&_h1]:font-black [&_h1]:tracking-tight [&_h1]:text-gradient [&_h1]:mb-2
+              [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-primary-foreground [&_h2]:mb-2
+              [&_p]:text-sm [&_p]:text-primary-foreground/60 [&_p]:mb-2 [&_p]:mx-auto [&_p]:max-w-lg
               [&_a]:text-accent [&_a]:underline
               [&_strong]:text-primary-foreground
               [&_*]:!bg-transparent [&_h1]:!text-gradient [&_h1_strong]:!text-inherit [&_h1_*]:!bg-transparent
               [&_p_span]:!text-primary-foreground/60 [&_p_span]:!bg-transparent"
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(heroHtml) }}
           />
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-primary-foreground/50">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-accent" />
+          <div className="flex flex-wrap justify-center gap-4 text-xs text-primary-foreground/50">
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5 text-accent" />
               <span>Do <strong className="text-accent">kilkunastu %</strong> zwrotu</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Store className="h-4 w-4 text-accent" />
+            <div className="flex items-center gap-1.5">
+              <Store className="h-3.5 w-3.5 text-accent" />
               <span><strong className="text-accent">{stores.length}</strong> sklepów partnerskich</span>
             </div>
           </div>
@@ -149,8 +149,7 @@ const Cashback = () => {
 
       {/* Stores grid + wheel */}
       <section className="container mx-auto px-4 py-12">
-        <div className="flex flex-col gap-8 lg:flex-row">
-          <div className="flex-1">
+        <div>
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-foreground">Sklepy z cashbackiem</h2>
@@ -236,14 +235,6 @@ const Cashback = () => {
             ))}
           </div>
         )}
-          </div>
-
-          {/* Sidebar: Fortune Wheel */}
-          <div className="w-full lg:w-72 flex-shrink-0">
-            <div className="lg:sticky lg:top-4">
-              <FortuneWheel />
-            </div>
-          </div>
         </div>
       </section>
 
