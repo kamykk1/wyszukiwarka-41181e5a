@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { UserPlus, Mail, Lock, User, MapPin, AtSign } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { UserPlus, Mail, Lock, User, MapPin, AtSign, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,11 +24,18 @@ const Register = () => {
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [phone, setPhone] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) setReferralCode(ref.toUpperCase());
+  }, [searchParams]);
 
   const mark = (f: string) => setTouched(p => ({ ...p, [f]: true }));
 
@@ -65,6 +72,7 @@ const Register = () => {
       postal_code: postalCode,
       phone,
       username: username || undefined,
+      referral_code: referralCode.trim() || undefined,
     });
     setLoading(false);
     if (error) {
@@ -135,6 +143,15 @@ const Register = () => {
                   <Input id="phone" type="tel" placeholder="+48 123 456 789" value={phone} onChange={e => setPhone(e.target.value)} onBlur={() => mark("phone")} className={phoneErr ? "border-destructive" : ""} />
                 </div>
                 {phoneErr && <p className="text-xs text-destructive mt-1">{phoneErr}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="referralCode">Kod polecający (opcjonalnie)</Label>
+                <div className="relative mt-1.5">
+                  <Gift className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input id="referralCode" placeholder="np. A1B2C3D4" value={referralCode} onChange={e => setReferralCode(e.target.value.toUpperCase())} className="pl-10 font-mono tracking-wider" maxLength={8} />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Wpisz kod znajomego i oboje otrzymacie bonus punktowy!</p>
               </div>
 
               <div className="border-t pt-4">

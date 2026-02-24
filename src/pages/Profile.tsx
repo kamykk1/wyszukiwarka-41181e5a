@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Bell, BellOff, Save, Loader2, History, MousePointerClick, ShoppingBag, ArrowDownCircle, ArrowUpCircle, Settings2, MapPin, Landmark, CreditCard, PiggyBank, AtSign, Clock } from "lucide-react";
+import { User, Mail, Bell, BellOff, Save, Loader2, History, MousePointerClick, ShoppingBag, ArrowDownCircle, ArrowUpCircle, Settings2, MapPin, Landmark, CreditCard, PiggyBank, AtSign, Clock, Gift, Copy, Check, Users } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRewards } from "@/hooks/useRewards";
+import { useReferral } from "@/hooks/useReferral";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -18,6 +19,7 @@ const typeConfig: Record<string, { label: string; icon: React.ReactNode; color: 
   redeemed: { label: "Wydane", icon: <ArrowDownCircle className="h-4 w-4" />, color: "text-destructive" },
   adjusted: { label: "Korekta", icon: <Settings2 className="h-4 w-4" />, color: "text-muted-foreground" },
   partner_task: { label: "Zadanie partnera", icon: <ArrowUpCircle className="h-4 w-4" />, color: "text-accent" },
+  referral: { label: "Polecenie", icon: <Gift className="h-4 w-4" />, color: "text-purple-500" },
 };
 
 const translateDescription = (desc: string | null): string => {
@@ -32,6 +34,17 @@ const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { userPoints, transactions, loading } = useRewards();
+  const { referralLink, referrals, loading: refLoading } = useReferral();
+  const [copied, setCopied] = useState(false);
+
+  const copyLink = () => {
+    if (referralLink) {
+      navigator.clipboard.writeText(referralLink);
+      setCopied(true);
+      toast({ title: "Skopiowano! 📋", description: "Link polecający został skopiowany do schowka." });
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
   const [username, setUsername] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -271,6 +284,46 @@ const Profile = () => {
               Zapisz zmiany
             </Button>
           </div>
+        </div>
+
+        {/* Referral section */}
+        <div className="rounded-xl border bg-card p-6 shadow-product mb-8">
+          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+            <Gift className="h-5 w-5" /> Program polecający
+          </h2>
+          <p className="text-sm text-muted-foreground mb-3">
+            Poleć NetSzukacz znajomym i zdobądźcie bonusowe punkty!
+          </p>
+          {referralLink && (
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex-1 rounded-lg border bg-muted/50 px-4 py-2.5 font-mono text-sm text-foreground truncate">
+                {referralLink}
+              </div>
+              <Button variant="outline" size="icon" onClick={copyLink} className="shrink-0">
+                {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          )}
+          {referrals.length > 0 && (
+            <div className="mt-4">
+              <p className="text-sm font-medium text-foreground flex items-center gap-1.5 mb-2">
+                <Users className="h-4 w-4" /> Polecone osoby ({referrals.length})
+              </p>
+              <div className="space-y-2">
+                {referrals.map(r => (
+                  <div key={r.id} className="flex items-center justify-between rounded-lg border px-4 py-2 text-sm">
+                    <span className="text-muted-foreground">
+                      {new Date(r.created_at).toLocaleDateString("pl-PL")}
+                    </span>
+                    <span className="font-bold text-success">+{r.points_awarded_referrer} pkt</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {referrals.length === 0 && !refLoading && (
+            <p className="text-xs text-muted-foreground">Jeszcze nie poleciłeś nikogo. Udostępnij link i zarabiaj punkty!</p>
+          )}
         </div>
 
         {/* Activity history */}
