@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { User, LogIn, LogOut, Menu, Heart, Gift, Trophy, Landmark, CreditCard, PiggyBank, Percent, ChevronDown, Dices, Share2 } from "lucide-react";
+import { User, LogIn, LogOut, Menu, Heart, Gift, Trophy, Landmark, CreditCard, PiggyBank, Percent, ChevronDown, Dices, Share2, Zap, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -65,6 +65,9 @@ const Navbar = () => {
     <>
       <DropdownItem to="/profile">
         <User className="mr-2 h-4 w-4" /> Profil
+      </DropdownItem>
+      <DropdownItem to="/moje-punkty">
+        <Zap className="mr-2 h-4 w-4" /> Moje punkty
       </DropdownItem>
       <DropdownItem to="/favorites">
         <Heart className="mr-2 h-4 w-4" /> Ulubione
@@ -147,8 +150,8 @@ const Navbar = () => {
               <HoverDropdown
                 trigger={
                   <Button variant="ghost" size="sm">
-                    <User className="mr-1.5 h-4 w-4" />
-                    Profil
+                    <Wallet className="mr-1.5 h-4 w-4" />
+                    Moje Konto
                     <ChevronDown className="ml-1 h-3 w-3" />
                   </Button>
                 }
@@ -238,8 +241,12 @@ const Navbar = () => {
               {user && (
                 <>
                   <div className="my-1 border-t" />
+                  <p className="text-xs font-semibold text-muted-foreground px-3 mb-1">Moje Konto</p>
                   <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
                     <Link to="/profile"><User className="mr-1.5 h-4 w-4" /> Profil</Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+                    <Link to="/moje-punkty"><Zap className="mr-1.5 h-4 w-4" /> Moje punkty</Link>
                   </Button>
                   <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
                     <Link to="/favorites"><Heart className="mr-1.5 h-4 w-4" /> Ulubione</Link>

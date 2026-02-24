@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Bell, BellOff, Save, Loader2, History, MousePointerClick, ShoppingBag, ArrowDownCircle, ArrowUpCircle, Settings2, MapPin, Landmark, CreditCard, PiggyBank, AtSign, Clock, Gift } from "lucide-react";
+import { User, Mail, Bell, BellOff, Save, Loader2, Settings2, MapPin, AtSign } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRewards } from "@/hooks/useRewards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -11,28 +10,9 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-const typeConfig: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  click: { label: "Kliknięcie", icon: <MousePointerClick className="h-4 w-4" />, color: "text-blue-500" },
-  purchase: { label: "Zakup", icon: <ShoppingBag className="h-4 w-4" />, color: "text-success" },
-  earned: { label: "Zdobyte", icon: <ArrowUpCircle className="h-4 w-4" />, color: "text-success" },
-  redeemed: { label: "Wydane", icon: <ArrowDownCircle className="h-4 w-4" />, color: "text-destructive" },
-  adjusted: { label: "Korekta", icon: <Settings2 className="h-4 w-4" />, color: "text-muted-foreground" },
-  partner_task: { label: "Zadanie partnera", icon: <ArrowUpCircle className="h-4 w-4" />, color: "text-accent" },
-  referral: { label: "Polecenie", icon: <Gift className="h-4 w-4" />, color: "text-purple-500" },
-};
-
-const translateDescription = (desc: string | null): string => {
-  if (!desc) return "—";
-  return desc
-    .replace(/account_opened/gi, "Otwarcie konta bankowego")
-    .replace(/loan_application/gi, "Wniosek o kredyt")
-    .replace(/deposit_opened/gi, "Założenie lokaty");
-};
-
 const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { userPoints, transactions, loading } = useRewards();
   const [username, setUsername] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -44,7 +24,6 @@ const Profile = () => {
   const [pointsThreshold, setPointsThreshold] = useState(500);
   const [saving, setSaving] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [pendingPoints, setPendingPoints] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -68,20 +47,7 @@ const Profile = () => {
       }
       setProfileLoading(false);
     };
-
-    const fetchPending = async () => {
-      const { data } = await supabase
-        .from("partner_tasks")
-        .select("points_awarded")
-        .eq("user_id", user.id)
-        .eq("status", "pending");
-      if (data) {
-        setPendingPoints(data.reduce((sum, t) => sum + (t.points_awarded || 0), 0));
-      }
-    };
-
     fetchProfile();
-    fetchPending();
   }, [user]);
 
   const handleSave = async () => {
@@ -127,7 +93,7 @@ const Profile = () => {
     );
   }
 
-  if (loading || profileLoading) {
+  if (profileLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -138,12 +104,6 @@ const Profile = () => {
     );
   }
 
-  const clickPoints = transactions.filter(t => t.type === "click").reduce((sum, t) => sum + t.amount, 0);
-  const purchasePoints = transactions.filter(t => t.type === "purchase").reduce((sum, t) => sum + t.amount, 0);
-  const kontaPoints = transactions.filter(t => t.description?.toLowerCase().includes("konto:") || t.description?.toLowerCase().includes("otwarcie konta")).reduce((sum, t) => sum + t.amount, 0);
-  const kredytyPoints = transactions.filter(t => t.description?.toLowerCase().includes("kredyt:") || t.description?.toLowerCase().includes("wniosek o kredyt")).reduce((sum, t) => sum + t.amount, 0);
-  const lokatyPoints = transactions.filter(t => t.description?.toLowerCase().includes("lokata:") || t.description?.toLowerCase().includes("założenie lokaty")).reduce((sum, t) => sum + t.amount, 0);
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -151,48 +111,6 @@ const Profile = () => {
         <h1 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
           <User className="h-6 w-6" /> Mój Profil
         </h1>
-
-        {/* Points summary cards */}
-        <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 mb-4">
-          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
-            <p className="text-2xl font-extrabold text-accent">{userPoints.balance}</p>
-            <p className="text-xs text-muted-foreground mt-1">Dostępne punkty</p>
-          </div>
-          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
-            <p className="text-2xl font-extrabold text-foreground">{userPoints.total_earned}</p>
-            <p className="text-xs text-muted-foreground mt-1">Łącznie zebrane punkty</p>
-          </div>
-          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
-            <p className="text-2xl font-extrabold text-blue-500">{clickPoints}</p>
-            <p className="text-xs text-muted-foreground mt-1">Punkty za kliknięcia</p>
-          </div>
-          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
-            <p className="text-2xl font-extrabold text-success">{purchasePoints}</p>
-            <p className="text-xs text-muted-foreground mt-1">Punkty za zakupy</p>
-          </div>
-        </div>
-        <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 mb-8">
-          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
-            <Landmark className="mx-auto h-5 w-5 text-accent mb-1" />
-            <p className="text-xl font-extrabold text-foreground">{kontaPoints}</p>
-            <p className="text-xs text-muted-foreground mt-1">Punkty za założone konta bankowe</p>
-          </div>
-          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
-            <CreditCard className="mx-auto h-5 w-5 text-accent mb-1" />
-            <p className="text-xl font-extrabold text-foreground">{kredytyPoints}</p>
-            <p className="text-xs text-muted-foreground mt-1">Punkty za wnioski o kredyt</p>
-          </div>
-          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
-            <PiggyBank className="mx-auto h-5 w-5 text-accent mb-1" />
-            <p className="text-xl font-extrabold text-foreground">{lokatyPoints}</p>
-            <p className="text-xs text-muted-foreground mt-1">Punkty za założone lokaty</p>
-          </div>
-          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
-            <Clock className="mx-auto h-5 w-5 text-amber-500 mb-1" />
-            <p className="text-xl font-extrabold text-amber-500">{pendingPoints}</p>
-            <p className="text-xs text-muted-foreground mt-1">Punkty oczekujące</p>
-          </div>
-        </div>
 
         {/* Account settings */}
         <div className="rounded-xl border bg-card p-6 shadow-product mb-8">
@@ -273,48 +191,6 @@ const Profile = () => {
             </Button>
           </div>
         </div>
-
-        {/* Activity history */}
-        {transactions.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <History className="h-5 w-5" /> Historia punktów
-            </h2>
-            <div className="rounded-xl border bg-card shadow-product overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b text-left text-xs font-medium text-muted-foreground">
-                    <th className="px-4 py-3">Typ</th>
-                    <th className="px-4 py-3">Opis</th>
-                    <th className="px-4 py-3 text-right">Punkty</th>
-                    <th className="px-4 py-3">Data</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map(t => {
-                    const cfg = typeConfig[t.type] || typeConfig.adjusted;
-                    return (
-                      <tr key={t.id} className="border-b last:border-0">
-                        <td className="px-4 py-3">
-                          <span className={`flex items-center gap-1.5 text-sm font-medium ${cfg.color}`}>
-                            {cfg.icon} {cfg.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-foreground">{translateDescription(t.description)}</td>
-                        <td className={`px-4 py-3 text-sm font-bold text-right ${t.amount > 0 ? "text-success" : "text-destructive"}`}>
-                          {t.amount > 0 ? "+" : ""}{t.amount}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {new Date(t.created_at).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
