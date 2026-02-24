@@ -819,6 +819,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_streaks: {
+        Row: {
+          current_streak: number
+          id: string
+          last_activity_date: string | null
+          longest_streak: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          current_streak?: number
+          id?: string
+          last_activity_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          current_streak?: number
+          id?: string
+          last_activity_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wheel_prizes: {
         Row: {
           color: string
@@ -1007,6 +1034,7 @@ export type Database = {
             }
             Returns: Json
           }
+      check_daily_streak: { Args: never; Returns: Json }
       get_email_by_username: { Args: { _username: string }; Returns: string }
       get_or_create_referral_code: { Args: never; Returns: string }
       has_role: {

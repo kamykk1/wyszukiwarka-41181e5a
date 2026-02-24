@@ -15,6 +15,7 @@ import ProductDetail from "./pages/ProductDetail";
 import Favorites from "./pages/Favorites";
 import Rewards from "./pages/Rewards";
 import Profile from "./pages/Profile";
+import MyPoints from "./pages/MyPoints";
 import Leaderboard from "./pages/Leaderboard";
 import Cashback from "./pages/Cashback";
 import FortuneWheelPage from "./pages/FortuneWheelPage";
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/rewards" element={<Rewards />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/moje-punkty" element={<MyPoints />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/cashback" element={<Cashback />} />
             <Route path="/kolo-fortuny" element={<FortuneWheelPage />} />
