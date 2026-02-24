@@ -18,6 +18,7 @@ import Profile from "./pages/Profile";
 import Leaderboard from "./pages/Leaderboard";
 import Cashback from "./pages/Cashback";
 import FortuneWheelPage from "./pages/FortuneWheelPage";
+import Referral from "./pages/Referral";
 import MailingClick from "./pages/MailingClick";
 import Konta from "./pages/Konta";
 import Kredyty from "./pages/Kredyty";
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/cashback" element={<Cashback />} />
             <Route path="/kolo-fortuny" element={<FortuneWheelPage />} />
+            <Route path="/polecaj" element={<Referral />} />
             
             <Route path="/mailing-click" element={<MailingClick />} />
             <Route path="/konta" element={<Konta />} />

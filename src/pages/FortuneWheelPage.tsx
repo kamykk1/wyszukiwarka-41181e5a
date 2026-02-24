@@ -5,7 +5,7 @@ const FortuneWheelPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <section className="container mx-auto px-4 py-12">
+      <section className="container mx-auto px-4 py-12 animate-fade-in">
         <div className="mx-auto max-w-md">
           <FortuneWheel />
         </div>
