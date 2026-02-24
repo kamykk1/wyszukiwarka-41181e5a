@@ -819,6 +819,77 @@ export type Database = {
         }
         Relationships: []
       }
+      wheel_prizes: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          points_reward: number
+          probability_weight: number
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          points_reward?: number
+          probability_weight?: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          points_reward?: number
+          probability_weight?: number
+        }
+        Relationships: []
+      }
+      wheel_spins: {
+        Row: {
+          created_at: string
+          id: string
+          points_won: number
+          prize_id: string | null
+          spin_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          points_won?: number
+          prize_id?: string | null
+          spin_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          points_won?: number
+          prize_id?: string | null
+          spin_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wheel_spins_prize_id_fkey"
+            columns: ["prize_id"]
+            isOneToOne: false
+            referencedRelation: "wheel_prizes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       leaderboard: {
@@ -953,6 +1024,7 @@ export type Database = {
       redeem_reward:
         | { Args: { _reward_id: string }; Returns: Json }
         | { Args: { _reward_id: string; _user_id: string }; Returns: Json }
+      spin_wheel: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
