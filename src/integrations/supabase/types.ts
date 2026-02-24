@@ -847,28 +847,17 @@ export type Database = {
       award_mailing_click_points:
         | { Args: { _campaign_id: string }; Returns: Json }
         | { Args: { _campaign_id: string; _user_id: string }; Returns: Json }
-      award_partner_task_points:
-        | {
-            Args: {
-              _external_task_id: string
-              _partner_id: string
-              _product_id?: string
-              _task_type: string
-              _user_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _external_task_id: string
-              _override_points?: number
-              _partner_id: string
-              _product_id?: string
-              _task_type: string
-              _user_id: string
-            }
-            Returns: Json
-          }
+      award_partner_task_points: {
+        Args: {
+          _external_task_id: string
+          _override_points?: number
+          _partner_id: string
+          _product_id?: string
+          _task_type: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       award_purchase_points:
         | {
             Args: { _product_name: string; _store_name: string }
