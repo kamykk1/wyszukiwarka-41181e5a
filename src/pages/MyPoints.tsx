@@ -110,6 +110,7 @@ const MyPoints = () => {
 
   const clickPoints = transactions.filter(t => t.type === "click").reduce((sum, t) => sum + t.amount, 0);
   const purchasePoints = transactions.filter(t => t.type === "purchase").reduce((sum, t) => sum + t.amount, 0);
+  const wheelPoints = transactions.filter(t => t.type === "wheel").reduce((sum, t) => sum + t.amount, 0);
   const kontaPoints = transactions.filter(t => t.description?.toLowerCase().includes("konto:") || t.description?.toLowerCase().includes("otwarcie konta") || t.description?.toLowerCase().includes("założenie konta")).reduce((sum, t) => sum + t.amount, 0);
   const kredytyPoints = transactions.filter(t => t.description?.toLowerCase().includes("kredyt:") || t.description?.toLowerCase().includes("wniosek o kredyt") || t.description?.toLowerCase().includes("zatwierdzenie kredytu")).reduce((sum, t) => sum + t.amount, 0);
   const lokatyPoints = transactions.filter(t => t.description?.toLowerCase().includes("lokata:") || t.description?.toLowerCase().includes("założenie lokaty")).reduce((sum, t) => sum + t.amount, 0);
@@ -166,8 +167,9 @@ const MyPoints = () => {
             <p className="text-xs text-muted-foreground mt-1">Dostępne punkty</p>
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-product text-center">
-            <p className="text-2xl font-extrabold text-foreground">{userPoints.total_earned}</p>
-            <p className="text-xs text-muted-foreground mt-1">Łącznie zebrane punkty</p>
+            <Clock className="mx-auto h-5 w-5 text-amber-500 mb-1" />
+            <p className="text-2xl font-extrabold text-amber-500">{pendingPoints}</p>
+            <p className="text-xs text-muted-foreground mt-1">Punkty oczekujące</p>
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-product text-center">
             <p className="text-2xl font-extrabold text-blue-500">{clickPoints}</p>
@@ -195,9 +197,15 @@ const MyPoints = () => {
             <p className="text-xs text-muted-foreground mt-1">Punkty za lokaty</p>
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-product text-center">
-            <Clock className="mx-auto h-5 w-5 text-amber-500 mb-1" />
-            <p className="text-xl font-extrabold text-amber-500">{pendingPoints}</p>
-            <p className="text-xs text-muted-foreground mt-1">Punkty oczekujące</p>
+            <Zap className="mx-auto h-5 w-5 text-amber-500 mb-1" />
+            <p className="text-xl font-extrabold text-foreground">{wheelPoints}</p>
+            <p className="text-xs text-muted-foreground mt-1">Wykręcone punkty</p>
+          </div>
+        </div>
+        <div className="grid gap-4 grid-cols-1 mb-8">
+          <div className="rounded-xl border bg-card p-4 shadow-product text-center">
+            <p className="text-2xl font-extrabold text-foreground">{userPoints.total_earned}</p>
+            <p className="text-xs text-muted-foreground mt-1">Łącznie zebrane punkty</p>
           </div>
         </div>
 
