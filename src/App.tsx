@@ -24,6 +24,7 @@ import MailingClick from "./pages/MailingClick";
 import Konta from "./pages/Konta";
 import Kredyty from "./pages/Kredyty";
 import Lokaty from "./pages/Lokaty";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/konta" element={<Konta />} />
             <Route path="/kredyty" element={<Kredyty />} />
             <Route path="/lokaty" element={<Lokaty />} />
+            <Route path="/zainstaluj" element={<Install />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
