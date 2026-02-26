@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Percent, ExternalLink, TrendingUp, Loader2, Store } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -18,6 +18,7 @@ interface CashbackStore {
   cashback_type: string | null;
   affiliate_url: string | null;
   partner_source: string | null;
+  category: string | null;
 }
 
 const CashbackRateBadge = ({ rate, type }: { rate: number; type: string | null }) => {
@@ -57,7 +58,19 @@ const Cashback = () => {
   const [stores, setStores] = useState<CashbackStore[]>([]);
   const [loading, setLoading] = useState(true);
   const [heroHtml, setHeroHtml] = useState<string>(defaultCashbackHeroHtml);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const { user } = useAuth();
+
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    stores.forEach((s) => { if (s.category) cats.add(s.category); });
+    return Array.from(cats).sort();
+  }, [stores]);
+
+  const filteredStores = useMemo(() => {
+    if (selectedCategory === "all") return stores;
+    return stores.filter((s) => s.category === selectedCategory);
+  }, [stores, selectedCategory]);
 
   useEffect(() => {
     const fetchStores = async () => {
@@ -73,7 +86,7 @@ const Cashback = () => {
       // Fetch Tradedoubler programs
       const { data: tdPrograms } = await supabase
         .from("tradedoubler_programs")
-        .select("id, name, logo_url, cashback_rate, cashback_type, url")
+        .select("id, name, logo_url, cashback_rate, cashback_type, url, category")
         .not("cashback_rate", "is", null)
         .gt("cashback_rate", 0);
 
@@ -86,6 +99,7 @@ const Cashback = () => {
         cashback_type: s.cashback_type,
         affiliate_url: s.affiliate_url,
         partner_source: s.partner_source,
+        category: null,
       }));
 
       // Deduplicate: skip TD programs already linked as stores (by name)
@@ -101,6 +115,7 @@ const Cashback = () => {
           cashback_type: p.cashback_type,
           affiliate_url: p.url,
           partner_source: "tradedoubler",
+          category: p.category || null,
         }));
 
       const merged = [...manualStores, ...tdStores].sort((a, b) => b.cashback_rate - a.cashback_rate);
@@ -183,33 +198,62 @@ const Cashback = () => {
       {/* Stores grid + wheel */}
       <section className="container mx-auto px-4 py-12">
         <div>
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-bold text-foreground">Sklepy z cashbackiem</h2>
             <p className="text-sm text-muted-foreground mt-0.5">Sortowane według najwyższego zwrotu</p>
           </div>
           {!loading && (
-            <Badge variant="secondary" className="text-sm px-3 py-1">
-              {stores.length} {stores.length === 1 ? "sklep" : stores.length < 5 ? "sklepy" : "sklepów"}
+            <Badge variant="secondary" className="text-sm px-3 py-1 self-start">
+              {filteredStores.length} {filteredStores.length === 1 ? "sklep" : filteredStores.length < 5 ? "sklepy" : "sklepów"}
             </Badge>
           )}
         </div>
+
+        {/* Category filter */}
+        {categories.length > 0 && (
+          <div className="mb-6 flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedCategory("all")}
+              className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+                selectedCategory === "all"
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              Wszystkie
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+                  selectedCategory === cat
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : stores.length === 0 ? (
+        ) : filteredStores.length === 0 ? (
           <div className="rounded-xl border bg-card p-12 text-center">
             <Store className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
             <p className="font-semibold text-foreground">Brak sklepów z cashbackiem</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Administrator musi skonfigurować programy Tradedoubler w panelu sklepów.
+              {selectedCategory !== "all" ? "Brak sklepów w tej kategorii." : "Administrator musi skonfigurować programy Tradedoubler w panelu sklepów."}
             </p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {stores.map((store, i) => (
+            {filteredStores.map((store, i) => (
               <div
                 key={store.id}
                 className="group relative rounded-xl border bg-card p-5 shadow-product transition-all duration-300 hover:shadow-product-hover hover:-translate-y-1 animate-fade-in"
