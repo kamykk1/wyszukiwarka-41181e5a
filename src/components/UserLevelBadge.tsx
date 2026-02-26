@@ -1,8 +1,10 @@
 import { getUserLevel } from "@/components/UserLevelCard";
 import { useUserPoints } from "@/hooks/useUserPoints";
+import { useLevelUpConfetti } from "@/hooks/useLevelUpConfetti";
 
 const UserLevelBadge = () => {
   const totalEarned = useUserPoints();
+  useLevelUpConfetti(totalEarned);
   if (totalEarned === null) return null;
 
   const level = getUserLevel(totalEarned);
