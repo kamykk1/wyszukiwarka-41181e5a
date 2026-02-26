@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
+import UserLevelCard from "@/components/UserLevelCard";
 
 const typeConfig: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   click: { label: "Kliknięcie", icon: <MousePointerClick className="h-4 w-4" />, color: "text-blue-500" },
@@ -124,6 +125,9 @@ const MyPoints = () => {
         <h1 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
           <Zap className="h-6 w-6" /> Moje Punkty
         </h1>
+
+        {/* User level */}
+        <UserLevelCard totalEarned={userPoints.total_earned} />
 
         {/* Streak card */}
         <div className="rounded-xl border bg-card p-5 shadow-product mb-6">
