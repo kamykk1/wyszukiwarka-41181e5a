@@ -58,6 +58,7 @@ const App = () => (
             <Route path="/konta" element={<Konta />} />
             <Route path="/kredyty" element={<Kredyty />} />
             <Route path="/lokaty" element={<Lokaty />} />
+            <Route path="/zainstaluj" element={<Install />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
