@@ -62,16 +62,49 @@ const Cashback = () => {
   useEffect(() => {
     const fetchStores = async () => {
       setLoading(true);
-      const { data, error } = await supabase
+
+      // Fetch manual stores
+      const { data: storesData } = await supabase
         .from("stores_public")
         .select("id, name, logo, color, cashback_rate, cashback_type, affiliate_url, partner_source")
         .not("cashback_rate", "is", null)
-        .gt("cashback_rate", 0)
-        .order("cashback_rate", { ascending: false });
+        .gt("cashback_rate", 0);
 
-      if (!error && data) {
-        setStores(data as CashbackStore[]);
-      }
+      // Fetch Tradedoubler programs
+      const { data: tdPrograms } = await supabase
+        .from("tradedoubler_programs")
+        .select("id, name, logo_url, cashback_rate, cashback_type, url")
+        .not("cashback_rate", "is", null)
+        .gt("cashback_rate", 0);
+
+      const manualStores: CashbackStore[] = (storesData || []).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        logo: s.logo,
+        color: s.color || "#666666",
+        cashback_rate: s.cashback_rate,
+        cashback_type: s.cashback_type,
+        affiliate_url: s.affiliate_url,
+        partner_source: s.partner_source,
+      }));
+
+      // Deduplicate: skip TD programs already linked as stores (by name)
+      const storeNames = new Set(manualStores.map((s) => s.name.toLowerCase()));
+      const tdStores: CashbackStore[] = (tdPrograms || [])
+        .filter((p: any) => !storeNames.has(p.name.toLowerCase()))
+        .map((p: any) => ({
+          id: `td-${p.id}`,
+          name: p.name,
+          logo: p.logo_url || "🏪",
+          color: "#2563eb",
+          cashback_rate: p.cashback_rate,
+          cashback_type: p.cashback_type,
+          affiliate_url: p.url,
+          partner_source: "tradedoubler",
+        }));
+
+      const merged = [...manualStores, ...tdStores].sort((a, b) => b.cashback_rate - a.cashback_rate);
+      setStores(merged);
       setLoading(false);
     };
     fetchStores();
@@ -200,11 +233,6 @@ const Cashback = () => {
                       <h3 className="font-bold text-foreground group-hover:text-accent transition-colors">
                         {store.name}
                       </h3>
-                      {store.partner_source === "tradedoubler" && (
-                        <Badge variant="secondary" className="mt-0.5 text-xs px-1.5 py-0 h-4">
-                          Tradedoubler
-                        </Badge>
-                      )}
                     </div>
                   </div>
                   <CashbackRateBadge rate={store.cashback_rate} type={store.cashback_type} />
