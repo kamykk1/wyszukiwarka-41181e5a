@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
-import { Percent, ExternalLink, TrendingUp, Loader2, Store } from "lucide-react";
+import { ExternalLink, TrendingUp, Loader2, Store, Search, ArrowUpDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DOMPurify from "dompurify";
@@ -26,8 +27,7 @@ const CashbackRateBadge = ({ rate, type }: { rate: number; type: string | null }
     ? `${rate}% cashback`
     : `${rate} cashback`;
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2.5 py-0.5 text-sm font-bold text-accent">
-      <Percent className="h-3 w-3" />
+    <span className="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-0.5 text-sm font-bold text-accent">
       {label}
     </span>
   );
@@ -59,6 +59,8 @@ const Cashback = () => {
   const [loading, setLoading] = useState(true);
   const [heroHtml, setHeroHtml] = useState<string>(defaultCashbackHeroHtml);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"rate" | "name">("rate");
   const { user } = useAuth();
 
   const categories = useMemo(() => {
@@ -68,9 +70,21 @@ const Cashback = () => {
   }, [stores]);
 
   const filteredStores = useMemo(() => {
-    if (selectedCategory === "all") return stores;
-    return stores.filter((s) => s.category === selectedCategory);
-  }, [stores, selectedCategory]);
+    let result = stores;
+    if (selectedCategory !== "all") {
+      result = result.filter((s) => s.category === selectedCategory);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((s) => s.name.toLowerCase().includes(q));
+    }
+    if (sortBy === "name") {
+      result = [...result].sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      result = [...result].sort((a, b) => b.cashback_rate - a.cashback_rate);
+    }
+    return result;
+  }, [stores, selectedCategory, searchQuery, sortBy]);
 
   useEffect(() => {
     const fetchStores = async () => {
@@ -201,13 +215,35 @@ const Cashback = () => {
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-bold text-foreground">Sklepy z cashbackiem</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">Sortowane według najwyższego zwrotu</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Sortowane {sortBy === "rate" ? "wg najwyższego zwrotu" : "alfabetycznie"}</p>
           </div>
           {!loading && (
             <Badge variant="secondary" className="text-sm px-3 py-1 self-start">
               {filteredStores.length} {filteredStores.length === 1 ? "sklep" : filteredStores.length < 5 ? "sklepy" : "sklepów"}
             </Badge>
           )}
+        </div>
+
+        {/* Search + Sort */}
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Szukaj sklepu..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-1.5"
+            onClick={() => setSortBy(sortBy === "rate" ? "name" : "rate")}
+          >
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            {sortBy === "rate" ? "Wg nazwy" : "Wg cashbacku"}
+          </Button>
         </div>
 
         {/* Category filter */}
