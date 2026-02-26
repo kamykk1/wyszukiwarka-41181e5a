@@ -24,6 +24,7 @@ import MailingClick from "./pages/MailingClick";
 import Konta from "./pages/Konta";
 import Kredyty from "./pages/Kredyty";
 import Lokaty from "./pages/Lokaty";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
