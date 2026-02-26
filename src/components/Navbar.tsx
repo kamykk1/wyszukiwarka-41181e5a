@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { useState, useRef } from "react";
 import logo from "@/assets/logo.png";
+import UserLevelBadge from "@/components/UserLevelBadge";
 
 const kontaSubpages = [
   { label: "Konta osobiste", path: "/konta?typ=konta_osobiste" },
@@ -152,6 +153,7 @@ const Navbar = () => {
                   <Button variant="ghost" size="sm">
                     <Wallet className="mr-1.5 h-4 w-4" />
                     Moje Konto
+                    <UserLevelBadge />
                     <ChevronDown className="ml-1 h-3 w-3" />
                   </Button>
                 }
@@ -247,7 +249,10 @@ const Navbar = () => {
               {user && (
                 <>
                   <div className="my-1 border-t" />
-                  <p className="text-xs font-semibold text-muted-foreground px-3 mb-1">Moje Konto</p>
+                  <div className="flex items-center gap-2 px-3 mb-1">
+                    <p className="text-xs font-semibold text-muted-foreground">Moje Konto</p>
+                    <UserLevelBadge />
+                  </div>
                   <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
                     <Link to="/profile"><User className="mr-1.5 h-4 w-4" /> Profil</Link>
                   </Button>

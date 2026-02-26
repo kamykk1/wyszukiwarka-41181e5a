@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { User, Mail, Bell, BellOff, Save, Loader2, Settings2, MapPin, AtSign } from "lucide-react";
+import UserLevelBadge from "@/components/UserLevelBadge";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -110,6 +111,7 @@ const Profile = () => {
       <div className="container mx-auto px-4 py-6 max-w-3xl">
         <h1 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
           <User className="h-6 w-6" /> Mój Profil
+          <UserLevelBadge />
         </h1>
 
         {/* Account settings */}
