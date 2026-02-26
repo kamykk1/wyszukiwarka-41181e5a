@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { User, LogIn, LogOut, Menu, Heart, Gift, Trophy, Landmark, CreditCard, PiggyBank, Percent, ChevronDown, Dices, Share2, Zap, Wallet } from "lucide-react";
+import { User, LogIn, LogOut, Menu, Heart, Gift, Trophy, Landmark, CreditCard, PiggyBank, Percent, ChevronDown, Dices, Share2, Zap, Wallet, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -235,6 +235,12 @@ const Navbar = () => {
               <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
                 <Link to="/lokaty">
                   <PiggyBank className="mr-1.5 h-4 w-4" /> Lokaty
+                </Link>
+              </Button>
+
+              <Button variant="ghost" size="sm" asChild onClick={() => setOpen(false)}>
+                <Link to="/zainstaluj">
+                  <Download className="mr-1.5 h-4 w-4" /> Zainstaluj aplikację
                 </Link>
               </Button>
 
