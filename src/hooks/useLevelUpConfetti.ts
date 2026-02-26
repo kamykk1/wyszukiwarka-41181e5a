@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
+import { toast } from "sonner";
 import { getUserLevel } from "@/components/UserLevelCard";
 
 /**
- * Fires confetti when the user's level changes upward.
+ * Fires confetti + toast when the user's level changes upward.
  * Pass current totalEarned; the hook tracks the previous level internally.
  */
 export function useLevelUpConfetti(totalEarned: number | null) {
@@ -37,6 +38,12 @@ export function useLevelUpConfetti(totalEarned: number | null) {
         if (Date.now() < end) requestAnimationFrame(frame);
       };
       frame();
+
+      // Show toast notification
+      toast.success(`🎉 Awans na poziom ${current.icon} ${current.name}!`, {
+        description: "Gratulacje! Osiągnąłeś nowy poziom w programie lojalnościowym.",
+        duration: 5000,
+      });
     }
 
     prevLevelName.current = current.name;
