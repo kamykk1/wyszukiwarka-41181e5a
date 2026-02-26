@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "NetSzukacz - Porównywarka cen",
+  "short_name": "NetSzukacz",
+  "version": "1.0.0",
+  "description": "Porównuj ceny produktów na stronach sklepów i zbieraj punkty cashback z NetSzukacz.pl",
+  "permissions": ["activeTab", "storage", "alarms"],
+  "host_permissions": [
+    "https://*.allegro.pl/*",
+    "https://*.ceneo.pl/*",
+    "https://*.mediaexpert.pl/*",
+    "https://*.euro.com.pl/*",
+    "https://*.morele.net/*",
+    "https://*.x-kom.pl/*",
+    "https://*.mediamarkt.pl/*",
+    "https://*.empik.com/*",
+    "https://*.amazon.pl/*",
+    "https://*.oleole.pl/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.allegro.pl/*",
+        "https://*.ceneo.pl/*",
+        "https://*.mediaexpert.pl/*",
+        "https://*.euro.com.pl/*",
+        "https://*.morele.net/*",
+        "https://*.x-kom.pl/*",
+        "https://*.mediamarkt.pl/*",
+        "https://*.empik.com/*",
+        "https://*.amazon.pl/*",
+        "https://*.oleole.pl/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

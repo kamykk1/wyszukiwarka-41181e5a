@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 380px;
+      min-height: 200px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      padding: 16px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .header-logo {
+      width: 28px;
+      height: 28px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .user-badge {
+      font-size: 11px;
+      background: rgba(255,255,255,0.2);
+      padding: 4px 10px;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+
+    .user-badge:hover { background: rgba(255,255,255,0.3); }
+
+    /* Search */
+    .search-section {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #fff;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-input:focus { border-color: #2563eb; }
+
+    .search-btn {
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .search-btn:hover { background: #1d4ed8; }
+    .search-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    /* Current product */
+    .current-product {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #eff6ff;
+    }
+
+    .current-product-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #2563eb;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .current-product-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e293b;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .current-product-price {
+      margin-top: 4px;
+      font-size: 18px;
+      font-weight: 800;
+      color: #1e3a8a;
+    }
+
+    /* Results */
+    .results {
+      padding: 8px 16px 16px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .results-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 8px 0;
+    }
+
+    .product-card {
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      margin-bottom: 8px;
+      transition: all 0.2s;
+    }
+
+    .product-card:hover {
+      border-color: #2563eb;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+    }
+
+    .product-card img {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #f1f5f9;
+    }
+
+    .product-info { flex: 1; min-width: 0; }
+
+    .product-name {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      color: #1e293b;
+    }
+
+    .product-store {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .product-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    .product-price {
+      font-size: 15px;
+      font-weight: 800;
+      color: #1e3a8a;
+    }
+
+    .product-savings {
+      font-size: 11px;
+      font-weight: 700;
+      color: #16a34a;
+      background: #f0fdf4;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+
+    .buy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      background: #fbbf24;
+      color: #1e3a8a;
+      border: none;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .buy-btn:hover { background: #f59e0b; }
+
+    /* States */
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: #94a3b8;
+    }
+
+    .empty-state-icon { font-size: 32px; margin-bottom: 8px; }
+    .empty-state-text { font-size: 13px; }
+
+    .loading {
+      text-align: center;
+      padding: 24px;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Login form */
+    .login-section {
+      padding: 16px;
+    }
+
+    .login-section input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-bottom: 8px;
+      outline: none;
+    }
+
+    .login-section input:focus { border-color: #2563eb; }
+
+    .footer {
+      padding: 8px 16px;
+      text-align: center;
+      border-top: 1px solid #e2e8f0;
+      background: #fff;
+    }
+
+    .footer a {
+      color: #2563eb;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </div>
+      <h1>NetSzukacz</h1>
+    </div>
+    <div class="user-badge" id="userBadge">—</div>
+  </div>
+
+  <!-- Current product detected on page -->
+  <div class="current-product" id="currentProduct" style="display:none">
+    <div class="current-product-label">Wykryty produkt</div>
+    <div class="current-product-name" id="currentName"></div>
+    <div class="current-product-price" id="currentPrice"></div>
+  </div>
+
+  <!-- Manual search -->
+  <div class="search-section">
+    <input type="text" class="search-input" id="searchInput" placeholder="Szukaj produktu..." />
+    <button class="search-btn" id="searchBtn">Szukaj ofert</button>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsContainer">
+    <div class="empty-state">
+      <div class="empty-state-icon">🔍</div>
+      <div class="empty-state-text">Otwórz stronę produktu w sklepie<br/>lub wyszukaj ręcznie</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <a href="https://netszukacz.pl" target="_blank">Otwórz NetSzukacz.pl →</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
