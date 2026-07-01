@@ -331,6 +331,36 @@ export type Database = {
         }
         Relationships: []
       }
+      offers_settings: {
+        Row: {
+          cache_ttl_minutes: number
+          enabled: boolean
+          id: string
+          last_refresh_at: string | null
+          popular_queries: string[]
+          refresh_interval_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          cache_ttl_minutes?: number
+          enabled?: boolean
+          id?: string
+          last_refresh_at?: string | null
+          popular_queries?: string[]
+          refresh_interval_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          cache_ttl_minutes?: number
+          enabled?: boolean
+          id?: string
+          last_refresh_at?: string | null
+          popular_queries?: string[]
+          refresh_interval_minutes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       page_settings: {
         Row: {
           header_html: string

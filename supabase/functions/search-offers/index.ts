@@ -96,6 +96,39 @@ Deno.serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
+    // Wczytaj ustawienia cache (TTL, enabled).
+    const { data: settings } = await admin
+      .from("offers_settings")
+      .select("cache_ttl_minutes, enabled")
+      .eq("id", "default")
+      .maybeSingle();
+    const ttlMinutes = settings?.cache_ttl_minutes ?? 30;
+    const cacheEnabled = settings?.enabled ?? true;
+    const forceRefresh = new URL(req.url).searchParams.get("refresh") === "1";
+
+    // Spróbuj cache jeśli włączone i nie wymuszono odświeżenia.
+    if (cacheEnabled && !forceRefresh) {
+      const cutoff = new Date(Date.now() - ttlMinutes * 60_000).toISOString();
+      const { data: cached } = await admin
+        .from("offers_cache")
+        .select("*")
+        .eq("query", query.toLowerCase())
+        .gte("fetched_at", cutoff)
+        .order("price_effective", { ascending: true })
+        .limit(limit);
+
+      if (cached && cached.length >= 4) {
+        const offers = cached.map((o: any) => ({ ...o, product_url: buildAffiliateUrl(o.product_url, userEmail) }));
+        return new Response(
+          JSON.stringify({
+            offers, cached: true, query, category, sort,
+            partners: [], ttl_minutes: ttlMinutes,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
     // Wywołaj adaptery równolegle z timeoutem 5s.
     const runners: { partner: NormalizedOffer["partner_id"]; run: () => Promise<NormalizedOffer[]> }[] = [
       { partner: "allegro", run: () => searchAllegro(query) },
@@ -122,6 +155,7 @@ Deno.serve(async (req) => {
         }
       }),
     );
+
 
     // Wzbogać, sortuj, przytnij.
     const all = results.flatMap((r) =>

@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { Settings, Save, Loader2, Plug, Coins, Plus, Trash2 } from "lucide-react";
+import { Settings, Save, Loader2, Plug, Coins, Plus, Trash2, Zap, Timer, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
 
 interface PartnerView {
   id: string;
@@ -188,6 +190,19 @@ const AdminPartners = () => {
 
   // Stats
   const [stats, setStats] = useState<Record<string, { tasks: number; points: number }>>({});
+  // Cache settings
+  const [cacheSettings, setCacheSettings] = useState<{
+    cache_ttl_minutes: number;
+    refresh_interval_minutes: number;
+    popular_queries: string[];
+    enabled: boolean;
+    last_refresh_at: string | null;
+  }>({ cache_ttl_minutes: 30, refresh_interval_minutes: 60, popular_queries: [], enabled: true, last_refresh_at: null });
+  const [cacheSaving, setCacheSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  // Connection tests
+  const [tests, setTests] = useState<Record<string, { ok: boolean; message: string; latency_ms: number } | "loading">>({});
+
   useEffect(() => {
     const fetchStats = async () => {
       const { data } = await supabase
@@ -204,8 +219,62 @@ const AdminPartners = () => {
         setStats(s);
       }
     };
+    const fetchCache = async () => {
+      const { data } = await supabase.from("offers_settings").select("*").eq("id", "default").maybeSingle();
+      if (data) setCacheSettings({
+        cache_ttl_minutes: data.cache_ttl_minutes,
+        refresh_interval_minutes: data.refresh_interval_minutes,
+        popular_queries: data.popular_queries || [],
+        enabled: data.enabled,
+        last_refresh_at: data.last_refresh_at,
+      });
+    };
     fetchStats();
+    fetchCache();
   }, []);
+
+  const saveCacheSettings = async () => {
+    setCacheSaving(true);
+    const { error } = await supabase.from("offers_settings").update({
+      cache_ttl_minutes: cacheSettings.cache_ttl_minutes,
+      refresh_interval_minutes: cacheSettings.refresh_interval_minutes,
+      popular_queries: cacheSettings.popular_queries,
+      enabled: cacheSettings.enabled,
+      updated_at: new Date().toISOString(),
+    }).eq("id", "default");
+    setCacheSaving(false);
+    if (error) toast({ title: "Błąd", description: error.message, variant: "destructive" });
+    else toast({ title: "Ustawienia cache zapisane ✓" });
+  };
+
+  const runRefreshNow = async () => {
+    setRefreshing(true);
+    try {
+      const { error } = await supabase.functions.invoke("refresh-offers-cache", {
+        headers: { "x-cron-secret": "manual" }, // fallback: użyje service role przez pg_cron; ręcznie zwykle 401
+      });
+      if (error) throw error;
+      toast({ title: "Odświeżanie uruchomione" });
+    } catch (e) {
+      toast({ title: "Odświeżanie w tle", description: "Cron zajmie się aktualizacją zgodnie z harmonogramem." });
+    }
+    setRefreshing(false);
+  };
+
+  const testConnection = async (partnerId: string) => {
+    setTests(prev => ({ ...prev, [partnerId]: "loading" }));
+    try {
+      const { data, error } = await supabase.functions.invoke("test-partner-connection", {
+        body: { partner_id: partnerId },
+        headers: await getAuthHeaders(),
+      });
+      if (error) throw error;
+      setTests(prev => ({ ...prev, [partnerId]: data }));
+    } catch (e) {
+      setTests(prev => ({ ...prev, [partnerId]: { ok: false, message: e instanceof Error ? e.message : "Błąd", latency_ms: 0 } }));
+    }
+  };
+
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -213,6 +282,58 @@ const AdminPartners = () => {
 
   return (
     <div className="space-y-4">
+      {/* Cache & harmonogram */}
+      <div className="rounded-xl border bg-card p-4 shadow-product">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <Timer className="h-5 w-5" /> Cache wyszukiwarki ofert
+          </h2>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">Włączony</Label>
+            <Switch checked={cacheSettings.enabled} onCheckedChange={v => setCacheSettings(p => ({ ...p, enabled: v }))} />
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3 mb-3">
+          <div>
+            <Label className="text-xs">TTL cache (minuty)</Label>
+            <Input type="number" min={1} max={10080} value={cacheSettings.cache_ttl_minutes}
+              onChange={e => setCacheSettings(p => ({ ...p, cache_ttl_minutes: Number(e.target.value) }))} className="mt-1.5" />
+            <p className="text-[11px] text-muted-foreground mt-1">Jak długo oferta jest świeża (domyślnie 30)</p>
+          </div>
+          <div>
+            <Label className="text-xs">Interwał odświeżania (minuty)</Label>
+            <Input type="number" min={5} max={10080} value={cacheSettings.refresh_interval_minutes}
+              onChange={e => setCacheSettings(p => ({ ...p, refresh_interval_minutes: Number(e.target.value) }))} className="mt-1.5" />
+            <p className="text-[11px] text-muted-foreground mt-1">Harmonogram cron: co godzinę (stałe)</p>
+          </div>
+          <div>
+            <Label className="text-xs">Ostatnie odświeżenie</Label>
+            <div className="mt-1.5 h-10 flex items-center px-3 rounded-md border bg-muted/40 text-sm text-muted-foreground">
+              {cacheSettings.last_refresh_at ? new Date(cacheSettings.last_refresh_at).toLocaleString("pl-PL") : "nigdy"}
+            </div>
+          </div>
+        </div>
+        <div className="mb-3">
+          <Label className="text-xs">Popularne zapytania (jedno w linii)</Label>
+          <Textarea
+            rows={3}
+            value={cacheSettings.popular_queries.join("\n")}
+            onChange={e => setCacheSettings(p => ({ ...p, popular_queries: e.target.value.split("\n").map(s => s.trim()).filter(Boolean) }))}
+            className="mt-1.5 font-mono text-sm"
+            placeholder="iphone&#10;laptop&#10;telewizor"
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">Cron odświeży cache dla tych fraz.</p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={runRefreshNow} disabled={refreshing}>
+            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> Odśwież teraz
+          </Button>
+          <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={saveCacheSettings} disabled={cacheSaving}>
+            <Save className="mr-1.5 h-3.5 w-3.5" /> Zapisz ustawienia cache
+          </Button>
+        </div>
+      </div>
+
       <div className="rounded-xl border bg-card p-4 shadow-product">
         <h2 className="mb-2 text-lg font-bold text-foreground flex items-center gap-2">
           <Plug className="h-5 w-5" /> Integracje Partnerskie
@@ -220,6 +341,7 @@ const AdminPartners = () => {
         <p className="mb-6 text-sm text-muted-foreground">
           Włączaj/wyłączaj integracje z serwisami partnerskimi i konfiguruj punkty za zadania.
         </p>
+
 
         <div className="space-y-3">
           {partners.map(partner => {
@@ -244,6 +366,12 @@ const AdminPartners = () => {
                     <Badge variant={partner.enabled ? "default" : "secondary"} className={partner.enabled ? "bg-success text-success-foreground" : ""}>
                       {partner.task_points} pkt/zadanie
                     </Badge>
+                    <Button variant="outline" size="sm" onClick={() => testConnection(partner.id)} disabled={tests[partner.id] === "loading"}>
+                      {tests[partner.id] === "loading"
+                        ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        : <Zap className="mr-1.5 h-3.5 w-3.5" />}
+                      Test API
+                    </Button>
                     <Switch checked={partner.enabled} onCheckedChange={() => toggleEnabled(partner.id, partner.enabled)} />
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editingId === partner.id ? setEditingId(null) : startEditing(partner)}>
                       <Settings className="h-4 w-4" />
@@ -254,6 +382,21 @@ const AdminPartners = () => {
                 {partner.description && (
                   <p className="mt-2 text-xs text-muted-foreground">{partner.description}</p>
                 )}
+
+                {tests[partner.id] && tests[partner.id] !== "loading" && (() => {
+                  const t = tests[partner.id] as { ok: boolean; message: string; latency_ms: number };
+                  return (
+                    <div className={`mt-3 flex items-start gap-2 rounded-md border p-2.5 text-xs ${t.ok ? "border-success/40 bg-success/5 text-success" : "border-destructive/40 bg-destructive/5 text-destructive"}`}>
+                      {t.ok ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 shrink-0 mt-0.5" />}
+                      <div className="flex-1">
+                        <p className="font-medium">{t.ok ? "Połączenie OK" : "Połączenie nieudane"} · {t.latency_ms}ms</p>
+                        <p className="opacity-80">{t.message}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+
 
                 {editingId === partner.id && (
                   <div className="mt-4 space-y-4 border-t pt-4 animate-fade-in">
