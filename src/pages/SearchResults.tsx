@@ -185,13 +185,8 @@ const SearchResults = () => {
   // Sort TD products
   const sortedTdProducts = useMemo(() => {
     const sorted = [...tdProducts];
-    switch (sortBy) {
-      case "price-asc":
-        sorted.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
-        break;
-      case "price-desc":
-        sorted.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-        break;
+    if (sortBy === "price" || sortBy === "price_effective") {
+      sorted.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
     }
     return sorted;
   }, [tdProducts, sortBy]);
