@@ -83,11 +83,40 @@ async function testTemu(): Promise<TestResult> {
   }
 }
 
-const TESTERS: Record<string, () => Promise<TestResult>> = {
-  allegro: testAllegro,
-  aliexpress: testAliexpress,
-  amazon: testAmazon,
-  temu: testTemu,
+async function testBankier(adminClient: ReturnType<typeof createClient>): Promise<TestResult> {
+  const start = Date.now();
+  const { data, error } = await adminClient
+    .from("partner_integrations")
+    .select("api_key, base_url, category_api_keys, enabled")
+    .eq("id", "bankier")
+    .maybeSingle();
+  if (error || !data) {
+    return { ok: false, message: "Brak konfiguracji partnera 'bankier' w bazie", latency_ms: Date.now() - start };
+  }
+  const catKeys = (data.category_api_keys || {}) as Record<string, string>;
+  const hasAnyKey = !!data.api_key || Object.values(catKeys).some((v) => !!v);
+  if (!hasAnyKey) {
+    return { ok: false, message: "Brak skonfigurowanego API key (globalnego ani per-kategoria)", latency_ms: Date.now() - start };
+  }
+  const url = data.base_url || "https://api.systempartnerski.pl/publishers/financial-products-api";
+  try {
+    const key = data.api_key || Object.values(catKeys).find((v) => !!v)!;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${key}` } });
+    if (r.status < 500) {
+      return { ok: true, message: `Endpoint odpowiedział ${r.status}. Klucz(e) API obecne.`, latency_ms: Date.now() - start };
+    }
+    return { ok: false, message: `Endpoint zwrócił ${r.status}`, latency_ms: Date.now() - start };
+  } catch (e) {
+    return { ok: false, message: `Błąd sieci: ${(e as Error).message}`, latency_ms: Date.now() - start };
+  }
+}
+
+const TESTERS: Record<string, (admin: ReturnType<typeof createClient>) => Promise<TestResult>> = {
+  allegro: () => testAllegro(),
+  aliexpress: () => testAliexpress(),
+  amazon: () => testAmazon(),
+  temu: () => testTemu(),
+  bankier: (admin) => testBankier(admin),
 };
 
 Deno.serve(async (req) => {
