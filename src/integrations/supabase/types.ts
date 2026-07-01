@@ -262,6 +262,75 @@ export type Database = {
         }
         Relationships: []
       }
+      offers_cache: {
+        Row: {
+          brand: string | null
+          cashback_amount: number
+          cashback_rate: number
+          category: string | null
+          created_at: string
+          currency: string
+          external_id: string
+          fetched_at: string
+          id: string
+          image_url: string | null
+          partner_id: string
+          price: number
+          price_effective: number
+          price_total: number
+          product_url: string
+          query: string
+          rating: number | null
+          reviews_count: number | null
+          shipping_price: number
+          title: string
+        }
+        Insert: {
+          brand?: string | null
+          cashback_amount?: number
+          cashback_rate?: number
+          category?: string | null
+          created_at?: string
+          currency?: string
+          external_id: string
+          fetched_at?: string
+          id?: string
+          image_url?: string | null
+          partner_id: string
+          price: number
+          price_effective: number
+          price_total: number
+          product_url: string
+          query: string
+          rating?: number | null
+          reviews_count?: number | null
+          shipping_price?: number
+          title: string
+        }
+        Update: {
+          brand?: string | null
+          cashback_amount?: number
+          cashback_rate?: number
+          category?: string | null
+          created_at?: string
+          currency?: string
+          external_id?: string
+          fetched_at?: string
+          id?: string
+          image_url?: string | null
+          partner_id?: string
+          price?: number
+          price_effective?: number
+          price_total?: number
+          product_url?: string
+          query?: string
+          rating?: number | null
+          reviews_count?: number | null
+          shipping_price?: number
+          title?: string
+        }
+        Relationships: []
+      }
       page_settings: {
         Row: {
           header_html: string
