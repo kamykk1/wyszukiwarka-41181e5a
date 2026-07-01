@@ -224,16 +224,16 @@ const SearchResults = () => {
 
           <div className="flex items-center gap-3">
             <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-48">
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+              <SelectTrigger className="w-56">
                 <ArrowUpDown className="mr-2 h-3.5 w-3.5" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="price-asc">Cena: od najniższej</SelectItem>
-                <SelectItem value="price-desc">Cena: od najwyższej</SelectItem>
+                <SelectItem value="price_effective">Najniższa cena po cashbacku</SelectItem>
+                <SelectItem value="price">Najniższa cena</SelectItem>
+                <SelectItem value="cashback">Najwyższy cashback</SelectItem>
                 <SelectItem value="rating">Najlepiej oceniane</SelectItem>
-                <SelectItem value="reviews">Najwięcej opinii</SelectItem>
               </SelectContent>
             </Select>
           </div>
