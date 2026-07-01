@@ -366,6 +366,12 @@ const AdminPartners = () => {
                     <Badge variant={partner.enabled ? "default" : "secondary"} className={partner.enabled ? "bg-success text-success-foreground" : ""}>
                       {partner.task_points} pkt/zadanie
                     </Badge>
+                    <Button variant="outline" size="sm" onClick={() => testConnection(partner.id)} disabled={tests[partner.id] === "loading"}>
+                      {tests[partner.id] === "loading"
+                        ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        : <Zap className="mr-1.5 h-3.5 w-3.5" />}
+                      Test API
+                    </Button>
                     <Switch checked={partner.enabled} onCheckedChange={() => toggleEnabled(partner.id, partner.enabled)} />
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editingId === partner.id ? setEditingId(null) : startEditing(partner)}>
                       <Settings className="h-4 w-4" />
@@ -376,6 +382,21 @@ const AdminPartners = () => {
                 {partner.description && (
                   <p className="mt-2 text-xs text-muted-foreground">{partner.description}</p>
                 )}
+
+                {tests[partner.id] && tests[partner.id] !== "loading" && (() => {
+                  const t = tests[partner.id] as { ok: boolean; message: string; latency_ms: number };
+                  return (
+                    <div className={`mt-3 flex items-start gap-2 rounded-md border p-2.5 text-xs ${t.ok ? "border-success/40 bg-success/5 text-success" : "border-destructive/40 bg-destructive/5 text-destructive"}`}>
+                      {t.ok ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 shrink-0 mt-0.5" />}
+                      <div className="flex-1">
+                        <p className="font-medium">{t.ok ? "Połączenie OK" : "Połączenie nieudane"} · {t.latency_ms}ms</p>
+                        <p className="opacity-80">{t.message}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+
 
                 {editingId === partner.id && (
                   <div className="mt-4 space-y-4 border-t pt-4 animate-fade-in">
