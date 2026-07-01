@@ -282,6 +282,58 @@ const AdminPartners = () => {
 
   return (
     <div className="space-y-4">
+      {/* Cache & harmonogram */}
+      <div className="rounded-xl border bg-card p-4 shadow-product">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <Timer className="h-5 w-5" /> Cache wyszukiwarki ofert
+          </h2>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">Włączony</Label>
+            <Switch checked={cacheSettings.enabled} onCheckedChange={v => setCacheSettings(p => ({ ...p, enabled: v }))} />
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3 mb-3">
+          <div>
+            <Label className="text-xs">TTL cache (minuty)</Label>
+            <Input type="number" min={1} max={10080} value={cacheSettings.cache_ttl_minutes}
+              onChange={e => setCacheSettings(p => ({ ...p, cache_ttl_minutes: Number(e.target.value) }))} className="mt-1.5" />
+            <p className="text-[11px] text-muted-foreground mt-1">Jak długo oferta jest świeża (domyślnie 30)</p>
+          </div>
+          <div>
+            <Label className="text-xs">Interwał odświeżania (minuty)</Label>
+            <Input type="number" min={5} max={10080} value={cacheSettings.refresh_interval_minutes}
+              onChange={e => setCacheSettings(p => ({ ...p, refresh_interval_minutes: Number(e.target.value) }))} className="mt-1.5" />
+            <p className="text-[11px] text-muted-foreground mt-1">Harmonogram cron: co godzinę (stałe)</p>
+          </div>
+          <div>
+            <Label className="text-xs">Ostatnie odświeżenie</Label>
+            <div className="mt-1.5 h-10 flex items-center px-3 rounded-md border bg-muted/40 text-sm text-muted-foreground">
+              {cacheSettings.last_refresh_at ? new Date(cacheSettings.last_refresh_at).toLocaleString("pl-PL") : "nigdy"}
+            </div>
+          </div>
+        </div>
+        <div className="mb-3">
+          <Label className="text-xs">Popularne zapytania (jedno w linii)</Label>
+          <Textarea
+            rows={3}
+            value={cacheSettings.popular_queries.join("\n")}
+            onChange={e => setCacheSettings(p => ({ ...p, popular_queries: e.target.value.split("\n").map(s => s.trim()).filter(Boolean) }))}
+            className="mt-1.5 font-mono text-sm"
+            placeholder="iphone&#10;laptop&#10;telewizor"
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">Cron odświeży cache dla tych fraz.</p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={runRefreshNow} disabled={refreshing}>
+            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> Odśwież teraz
+          </Button>
+          <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={saveCacheSettings} disabled={cacheSaving}>
+            <Save className="mr-1.5 h-3.5 w-3.5" /> Zapisz ustawienia cache
+          </Button>
+        </div>
+      </div>
+
       <div className="rounded-xl border bg-card p-4 shadow-product">
         <h2 className="mb-2 text-lg font-bold text-foreground flex items-center gap-2">
           <Plug className="h-5 w-5" /> Integracje Partnerskie
@@ -289,6 +341,7 @@ const AdminPartners = () => {
         <p className="mb-6 text-sm text-muted-foreground">
           Włączaj/wyłączaj integracje z serwisami partnerskimi i konfiguruj punkty za zadania.
         </p>
+
 
         <div className="space-y-3">
           {partners.map(partner => {
