@@ -37,14 +37,32 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
     }
 
-    // Use service role to list auth users
+    // Use service role for admin ops
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // POST: toggle ban
+    if (req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      const { action, target_user_id, banned } = body as { action?: string; target_user_id?: string; banned?: boolean };
+      if (action === "toggle_ban" && target_user_id) {
+        if (target_user_id === userId) {
+          return new Response(JSON.stringify({ error: "Nie możesz zablokować własnego konta" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const { error: banErr } = await supabaseAdmin.auth.admin.updateUserById(target_user_id, {
+          ban_duration: banned ? "876000h" : "none",
+        });
+        if (banErr) throw banErr;
+        return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const { data: { users }, error: usersError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
     if (usersError) throw usersError;
+
 
     // Get all roles
     const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id, role");

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, MoreHorizontal, Shield, Loader2, Plus, Minus, Pencil } from "lucide-react";
+import { Search, MoreHorizontal, Shield, Loader2, Plus, Minus, Pencil, Ban, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +94,24 @@ const AdminUsers = () => {
     toast({ title: isAdmin ? "Usunięto rolę admina" : "Nadano rolę admina" });
     fetchUsers();
   };
+
+  const toggleBan = async (user: AdminUser) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const nextBanned = !user.banned;
+    const res = await supabase.functions.invoke("admin-users", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+      body: { action: "toggle_ban", target_user_id: user.id, banned: nextBanned },
+    });
+    if (res.error) {
+      toast({ title: "Błąd", description: "Nie udało się zmienić statusu konta.", variant: "destructive" });
+    } else {
+      toast({ title: nextBanned ? "Konto zablokowane" : "Konto odblokowane" });
+      fetchUsers();
+    }
+  };
+
 
   const openPointsDialog = (user: AdminUser) => {
     setPointsUser(user);
@@ -240,6 +258,11 @@ const AdminUsers = () => {
                           <Plus className="mr-2 h-4 w-4" />
                           Dodaj/Odejmij punkty
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toggleBan(user)} className={user.banned ? "text-success" : "text-destructive"}>
+                          {user.banned ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Ban className="mr-2 h-4 w-4" />}
+                          {user.banned ? "Odblokuj konto" : "Zablokuj konto"}
+                        </DropdownMenuItem>
+
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </td>
