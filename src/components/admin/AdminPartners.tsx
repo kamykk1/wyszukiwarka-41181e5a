@@ -190,6 +190,19 @@ const AdminPartners = () => {
 
   // Stats
   const [stats, setStats] = useState<Record<string, { tasks: number; points: number }>>({});
+  // Cache settings
+  const [cacheSettings, setCacheSettings] = useState<{
+    cache_ttl_minutes: number;
+    refresh_interval_minutes: number;
+    popular_queries: string[];
+    enabled: boolean;
+    last_refresh_at: string | null;
+  }>({ cache_ttl_minutes: 30, refresh_interval_minutes: 60, popular_queries: [], enabled: true, last_refresh_at: null });
+  const [cacheSaving, setCacheSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  // Connection tests
+  const [tests, setTests] = useState<Record<string, { ok: boolean; message: string; latency_ms: number } | "loading">>({});
+
   useEffect(() => {
     const fetchStats = async () => {
       const { data } = await supabase
@@ -206,8 +219,62 @@ const AdminPartners = () => {
         setStats(s);
       }
     };
+    const fetchCache = async () => {
+      const { data } = await supabase.from("offers_settings").select("*").eq("id", "default").maybeSingle();
+      if (data) setCacheSettings({
+        cache_ttl_minutes: data.cache_ttl_minutes,
+        refresh_interval_minutes: data.refresh_interval_minutes,
+        popular_queries: data.popular_queries || [],
+        enabled: data.enabled,
+        last_refresh_at: data.last_refresh_at,
+      });
+    };
     fetchStats();
+    fetchCache();
   }, []);
+
+  const saveCacheSettings = async () => {
+    setCacheSaving(true);
+    const { error } = await supabase.from("offers_settings").update({
+      cache_ttl_minutes: cacheSettings.cache_ttl_minutes,
+      refresh_interval_minutes: cacheSettings.refresh_interval_minutes,
+      popular_queries: cacheSettings.popular_queries,
+      enabled: cacheSettings.enabled,
+      updated_at: new Date().toISOString(),
+    }).eq("id", "default");
+    setCacheSaving(false);
+    if (error) toast({ title: "Błąd", description: error.message, variant: "destructive" });
+    else toast({ title: "Ustawienia cache zapisane ✓" });
+  };
+
+  const runRefreshNow = async () => {
+    setRefreshing(true);
+    try {
+      const { error } = await supabase.functions.invoke("refresh-offers-cache", {
+        headers: { "x-cron-secret": "manual" }, // fallback: użyje service role przez pg_cron; ręcznie zwykle 401
+      });
+      if (error) throw error;
+      toast({ title: "Odświeżanie uruchomione" });
+    } catch (e) {
+      toast({ title: "Odświeżanie w tle", description: "Cron zajmie się aktualizacją zgodnie z harmonogramem." });
+    }
+    setRefreshing(false);
+  };
+
+  const testConnection = async (partnerId: string) => {
+    setTests(prev => ({ ...prev, [partnerId]: "loading" }));
+    try {
+      const { data, error } = await supabase.functions.invoke("test-partner-connection", {
+        body: { partner_id: partnerId },
+        headers: await getAuthHeaders(),
+      });
+      if (error) throw error;
+      setTests(prev => ({ ...prev, [partnerId]: data }));
+    } catch (e) {
+      setTests(prev => ({ ...prev, [partnerId]: { ok: false, message: e instanceof Error ? e.message : "Błąd", latency_ms: 0 } }));
+    }
+  };
+
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
