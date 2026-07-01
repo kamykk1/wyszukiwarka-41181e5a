@@ -258,6 +258,11 @@ const AdminUsers = () => {
                           <Plus className="mr-2 h-4 w-4" />
                           Dodaj/Odejmij punkty
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toggleBan(user)} className={user.banned ? "text-success" : "text-destructive"}>
+                          {user.banned ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Ban className="mr-2 h-4 w-4" />}
+                          {user.banned ? "Odblokuj konto" : "Zablokuj konto"}
+                        </DropdownMenuItem>
+
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </td>
