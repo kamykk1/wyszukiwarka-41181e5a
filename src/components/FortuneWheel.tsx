@@ -85,27 +85,34 @@ const FortuneWheel = () => {
   const countdown = useCountdown();
 
   const loadHistory = useCallback(async (uid: string) => {
-    const { data } = await supabase
+    const { data: spins } = await supabase
       .from("wheel_spins")
-      .select("id, spin_date, points_won, created_at, wheel_prizes(name, icon)")
+      .select("id, spin_date, points_won, created_at, prize_id")
       .eq("user_id", uid)
       .order("created_at", { ascending: false })
       .limit(10);
-    if (data) {
-      setHistory(
-        (data as Array<{
-          id: string; spin_date: string; points_won: number; created_at: string;
-          wheel_prizes: { name: string; icon: string } | null;
-        }>).map((r) => ({
-          id: r.id,
-          spin_date: r.spin_date,
-          points_won: r.points_won,
-          created_at: r.created_at,
-          prize_name: r.wheel_prizes?.name ?? "—",
-          prize_icon: r.wheel_prizes?.icon ?? "🎁",
-        }))
-      );
+    if (!spins) return;
+    const prizeIds = Array.from(new Set(spins.map((s) => s.prize_id).filter(Boolean)));
+    let prizeMap: Record<string, { name: string; icon: string }> = {};
+    if (prizeIds.length > 0) {
+      const { data: prizesData } = await supabase
+        .from("wheel_prizes")
+        .select("id, name, icon")
+        .in("id", prizeIds as string[]);
+      (prizesData || []).forEach((p) => {
+        prizeMap[p.id] = { name: p.name, icon: p.icon };
+      });
     }
+    setHistory(
+      spins.map((s) => ({
+        id: s.id,
+        spin_date: s.spin_date,
+        points_won: s.points_won,
+        created_at: s.created_at,
+        prize_name: prizeMap[s.prize_id]?.name ?? "—",
+        prize_icon: prizeMap[s.prize_id]?.icon ?? "🎁",
+      }))
+    );
   }, []);
 
   useEffect(() => {
