@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, MoreHorizontal, Shield, Loader2, Plus, Minus, Pencil } from "lucide-react";
+import { Search, MoreHorizontal, Shield, Loader2, Plus, Minus, Pencil, Ban, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
