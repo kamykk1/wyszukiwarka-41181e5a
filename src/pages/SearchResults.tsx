@@ -113,7 +113,7 @@ const TDProductCard = ({ product, email, index }: { product: TDProduct; email?: 
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
-  const [sortBy, setSortBy] = useState("price-asc");
+  const [sortBy, setSortBy] = useState<SortKey>("price_effective");
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [tdPrograms, setTdPrograms] = useState<TDProgram[]>([]);
   const [tdProducts, setTdProducts] = useState<TDProduct[]>([]);
@@ -121,9 +121,13 @@ const SearchResults = () => {
   const [tdProductsTotal, setTdProductsTotal] = useState(0);
   const { user } = useAuth();
 
+  const { offers: unifiedOffers, partners, loading: unifiedLoading } = useOfferSearch(query, sortBy);
+
+  // Legacy sort mapping for lokalnych mock produktów
+  const legacySortBy = sortBy === "price_effective" ? "price-asc" : sortBy === "price" ? "price-asc" : sortBy === "rating" ? "rating" : "price-asc";
   const results = useMemo(
-    () => searchProducts(query, selectedStores.length > 0 ? selectedStores : undefined, sortBy),
-    [query, selectedStores, sortBy]
+    () => searchProducts(query, selectedStores.length > 0 ? selectedStores : undefined, legacySortBy),
+    [query, selectedStores, legacySortBy]
   );
 
   // Search Tradedoubler programs matching query
