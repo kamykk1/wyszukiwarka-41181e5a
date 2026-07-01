@@ -95,6 +95,24 @@ const AdminUsers = () => {
     fetchUsers();
   };
 
+  const toggleBan = async (user: AdminUser) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const nextBanned = !user.banned;
+    const res = await supabase.functions.invoke("admin-users", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+      body: { action: "toggle_ban", target_user_id: user.id, banned: nextBanned },
+    });
+    if (res.error) {
+      toast({ title: "Błąd", description: "Nie udało się zmienić statusu konta.", variant: "destructive" });
+    } else {
+      toast({ title: nextBanned ? "Konto zablokowane" : "Konto odblokowane" });
+      fetchUsers();
+    }
+  };
+
+
   const openPointsDialog = (user: AdminUser) => {
     setPointsUser(user);
     setPointsAmount(0);
