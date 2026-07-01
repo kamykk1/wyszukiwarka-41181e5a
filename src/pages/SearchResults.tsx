@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowUpDown, SlidersHorizontal, ExternalLink, Percent, Loader2, ShoppingBag, Star } from "lucide-react";
+import { ArrowUpDown, SlidersHorizontal, ExternalLink, Percent, Loader2, ShoppingBag, Sparkles } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
 import ProductCard from "@/components/ProductCard";
@@ -11,6 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useOfferSearch, type SortKey } from "@/hooks/useOfferSearch";
+import { OfferCard } from "@/components/search/OfferCard";
+import { PartnerStatusBar } from "@/components/search/PartnerStatusBar";
 
 interface TDProgram {
   id: string;
