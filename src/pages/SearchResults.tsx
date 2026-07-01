@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowUpDown, SlidersHorizontal, ExternalLink, Percent, Loader2, ShoppingBag, Star } from "lucide-react";
+import { ArrowUpDown, SlidersHorizontal, ExternalLink, Percent, Loader2, ShoppingBag, Sparkles } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
 import ProductCard from "@/components/ProductCard";
@@ -11,6 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useOfferSearch, type SortKey } from "@/hooks/useOfferSearch";
+import { OfferCard } from "@/components/search/OfferCard";
+import { PartnerStatusBar } from "@/components/search/PartnerStatusBar";
 
 interface TDProgram {
   id: string;
@@ -110,7 +113,7 @@ const TDProductCard = ({ product, email, index }: { product: TDProduct; email?: 
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
-  const [sortBy, setSortBy] = useState("price-asc");
+  const [sortBy, setSortBy] = useState<SortKey>("price_effective");
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [tdPrograms, setTdPrograms] = useState<TDProgram[]>([]);
   const [tdProducts, setTdProducts] = useState<TDProduct[]>([]);
@@ -118,9 +121,13 @@ const SearchResults = () => {
   const [tdProductsTotal, setTdProductsTotal] = useState(0);
   const { user } = useAuth();
 
+  const { offers: unifiedOffers, partners, loading: unifiedLoading } = useOfferSearch(query, sortBy);
+
+  // Legacy sort mapping for lokalnych mock produktów
+  const legacySortBy = sortBy === "price_effective" ? "price-asc" : sortBy === "price" ? "price-asc" : sortBy === "rating" ? "rating" : "price-asc";
   const results = useMemo(
-    () => searchProducts(query, selectedStores.length > 0 ? selectedStores : undefined, sortBy),
-    [query, selectedStores, sortBy]
+    () => searchProducts(query, selectedStores.length > 0 ? selectedStores : undefined, legacySortBy),
+    [query, selectedStores, legacySortBy]
   );
 
   // Search Tradedoubler programs matching query
@@ -178,13 +185,8 @@ const SearchResults = () => {
   // Sort TD products
   const sortedTdProducts = useMemo(() => {
     const sorted = [...tdProducts];
-    switch (sortBy) {
-      case "price-asc":
-        sorted.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
-        break;
-      case "price-desc":
-        sorted.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-        break;
+    if (sortBy === "price" || sortBy === "price_effective") {
+      sorted.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
     }
     return sorted;
   }, [tdProducts, sortBy]);
@@ -214,32 +216,63 @@ const SearchResults = () => {
               Wyniki dla „{query}"
             </h1>
             <p className="text-sm text-muted-foreground">
-              Znaleziono {results.length} ofert
-              {tdProducts.length > 0 && ` + ${tdProducts.length} produktów partnerskich`}
-              {tdProductsLoading && " · wyszukiwanie u partnerów..."}
+              {unifiedOffers.length} ofert od partnerów
+              {results.length > 0 && ` · ${results.length} z porównywarki`}
+              {tdProducts.length > 0 && ` · ${tdProducts.length} produktów TD`}
+              {(tdProductsLoading || unifiedLoading) && " · wyszukiwanie…"}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-48">
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+              <SelectTrigger className="w-56">
                 <ArrowUpDown className="mr-2 h-3.5 w-3.5" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="price-asc">Cena: od najniższej</SelectItem>
-                <SelectItem value="price-desc">Cena: od najwyższej</SelectItem>
+                <SelectItem value="price_effective">Najniższa cena po cashbacku</SelectItem>
+                <SelectItem value="price">Najniższa cena</SelectItem>
+                <SelectItem value="cashback">Najwyższy cashback</SelectItem>
                 <SelectItem value="rating">Najlepiej oceniane</SelectItem>
-                <SelectItem value="reviews">Najwięcej opinii</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
+        {/* Pasek statusu partnerów */}
+        <div className="mb-4">
+          <PartnerStatusBar partners={partners} loading={unifiedLoading} />
+        </div>
+
+        {/* Zunifikowane oferty od partnerów (Allegro, AliExpress, Amazon, Temu) */}
+        {(unifiedLoading || unifiedOffers.length > 0) && (
+          <div className="mb-10">
+            <div className="mb-3 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-accent" />
+              <h2 className="font-bold text-foreground">Najlepsze oferty od partnerów</h2>
+              <Badge variant="secondary" className="text-xs">{unifiedOffers.length}</Badge>
+            </div>
+            {unifiedLoading && unifiedOffers.length === 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="h-96 rounded-xl border bg-muted/30 animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {unifiedOffers.map((o, i) => (
+                  <OfferCard key={`${o.partner_id}-${o.external_id}`} offer={o} index={i} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="mb-6">
           <StoreFilter selectedStores={selectedStores} onToggleStore={toggleStore} />
         </div>
+
 
         {/* Tradedoubler partner programs */}
         {filteredPrograms.length > 0 && (
