@@ -216,9 +216,10 @@ const SearchResults = () => {
               Wyniki dla „{query}"
             </h1>
             <p className="text-sm text-muted-foreground">
-              Znaleziono {results.length} ofert
-              {tdProducts.length > 0 && ` + ${tdProducts.length} produktów partnerskich`}
-              {tdProductsLoading && " · wyszukiwanie u partnerów..."}
+              {unifiedOffers.length} ofert od partnerów
+              {results.length > 0 && ` · ${results.length} z porównywarki`}
+              {tdProducts.length > 0 && ` · ${tdProducts.length} produktów TD`}
+              {(tdProductsLoading || unifiedLoading) && " · wyszukiwanie…"}
             </p>
           </div>
 
@@ -239,9 +240,39 @@ const SearchResults = () => {
           </div>
         </div>
 
+        {/* Pasek statusu partnerów */}
+        <div className="mb-4">
+          <PartnerStatusBar partners={partners} loading={unifiedLoading} />
+        </div>
+
+        {/* Zunifikowane oferty od partnerów (Allegro, AliExpress, Amazon, Temu) */}
+        {(unifiedLoading || unifiedOffers.length > 0) && (
+          <div className="mb-10">
+            <div className="mb-3 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-accent" />
+              <h2 className="font-bold text-foreground">Najlepsze oferty od partnerów</h2>
+              <Badge variant="secondary" className="text-xs">{unifiedOffers.length}</Badge>
+            </div>
+            {unifiedLoading && unifiedOffers.length === 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="h-96 rounded-xl border bg-muted/30 animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {unifiedOffers.map((o, i) => (
+                  <OfferCard key={`${o.partner_id}-${o.external_id}`} offer={o} index={i} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="mb-6">
           <StoreFilter selectedStores={selectedStores} onToggleStore={toggleStore} />
         </div>
+
 
         {/* Tradedoubler partner programs */}
         {filteredPrograms.length > 0 && (
