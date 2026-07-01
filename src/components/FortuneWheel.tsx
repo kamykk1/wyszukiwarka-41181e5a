@@ -237,7 +237,7 @@ const FortuneWheel = () => {
       return;
     }
 
-    const prize = (data as { prize: Prize }).prize;
+    const prize = (data as unknown as { prize: Prize }).prize;
     const prizeIndex = prizes.findIndex((p) => p.id === prize.id);
     const sliceDeg = 360 / prizes.length;
     const targetAngle = 270 - (prizeIndex * sliceDeg + sliceDeg / 2);
