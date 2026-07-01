@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Flame, Clock, Sparkles, Trophy, Gift } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface Prize {
@@ -15,6 +15,26 @@ interface Prize {
   probability_weight: number;
 }
 
+const WHEEL_SIZE = 420;
+
+const useCountdown = () => {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const midnight = useMemo(() => {
+    const d = new Date();
+    d.setHours(24, 0, 0, 0);
+    return d.getTime();
+  }, [now]);
+  const diff = Math.max(0, midnight - now);
+  const h = Math.floor(diff / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  const s = Math.floor((diff % 60_000) / 1000);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
+
 const FortuneWheel = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -23,8 +43,10 @@ const FortuneWheel = () => {
   const [rotation, setRotation] = useState(0);
   const [hasSpunToday, setHasSpunToday] = useState(false);
   const [wonPrize, setWonPrize] = useState<{ name: string; points_reward: number; icon: string } | null>(null);
+  const [streak, setStreak] = useState(0);
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const countdown = useCountdown();
 
   useEffect(() => {
     const fetchPrizes = async () => {
@@ -38,21 +60,19 @@ const FortuneWheel = () => {
     fetchPrizes();
 
     if (user) {
-      const checkSpin = async () => {
+      (async () => {
         const today = new Date().toISOString().split("T")[0];
-        const { data } = await supabase
-          .from("wheel_spins")
-          .select("id")
-          .eq("spin_date", today);
-        if (data && data.length > 0) setHasSpunToday(true);
-      };
-      checkSpin();
+        const [{ data: spin }, { data: streakRow }] = await Promise.all([
+          supabase.from("wheel_spins").select("id").eq("spin_date", today).eq("user_id", user.id),
+          supabase.from("user_streaks").select("current_streak").eq("user_id", user.id).maybeSingle(),
+        ]);
+        if (spin && spin.length > 0) setHasSpunToday(true);
+        if (streakRow?.current_streak) setStreak(streakRow.current_streak);
+      })();
     }
   }, [user]);
 
-  useEffect(() => {
-    drawWheel();
-  }, [prizes, rotation]);
+  useEffect(() => { drawWheel(); }, [prizes, rotation]);
 
   const drawWheel = () => {
     const canvas = canvasRef.current;
@@ -60,12 +80,19 @@ const FortuneWheel = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const size = canvas.width;
-    const center = size / 2;
-    const radius = center - 4;
+    const dpr = window.devicePixelRatio || 1;
+    const cssSize = WHEEL_SIZE;
+    if (canvas.width !== cssSize * dpr) {
+      canvas.width = cssSize * dpr;
+      canvas.height = cssSize * dpr;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const center = cssSize / 2;
+    const radius = center - 6;
     const sliceAngle = (2 * Math.PI) / prizes.length;
 
-    ctx.clearRect(0, 0, size, size);
+    ctx.clearRect(0, 0, cssSize, cssSize);
     ctx.save();
     ctx.translate(center, center);
     ctx.rotate((rotation * Math.PI) / 180);
@@ -75,39 +102,53 @@ const FortuneWheel = () => {
       const start = i * sliceAngle;
       const end = start + sliceAngle;
 
+      // Slice fill: alternate subtle contrast, keep prize.color as accent stripe
+      const grad = ctx.createRadialGradient(center, center, radius * 0.2, center, center, radius);
+      const base = i % 2 === 0 ? "#1E293B" : "#0F172A";
+      grad.addColorStop(0, base);
+      grad.addColorStop(1, i % 2 === 0 ? "#111c31" : "#0a1220");
       ctx.beginPath();
       ctx.moveTo(center, center);
       ctx.arc(center, center, radius, start, end);
       ctx.closePath();
-      ctx.fillStyle = prize.color;
+      ctx.fillStyle = grad;
       ctx.fill();
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2;
+
+      // Divider
+      ctx.strokeStyle = "rgba(249,115,22,0.25)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Prize accent arc (thin colored ring per slice near rim)
+      ctx.beginPath();
+      ctx.arc(center, center, radius - 8, start + 0.02, end - 0.02);
+      ctx.strokeStyle = prize.color || "#f97316";
+      ctx.lineWidth = 4;
       ctx.stroke();
 
       // Text
       ctx.save();
       ctx.translate(center, center);
       ctx.rotate(start + sliceAngle / 2);
-      ctx.textAlign = "center";
-      ctx.fillStyle = "#fff";
-      ctx.font = `bold ${Math.max(10, 14 - prizes.length * 0.3)}px sans-serif`;
-      ctx.fillText(prize.icon, radius * 0.6, 4);
-      ctx.font = `${Math.max(8, 11 - prizes.length * 0.2)}px sans-serif`;
-      ctx.fillText(prize.name, radius * 0.38, 4);
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#f8fafc";
+      const nameFont = Math.max(11, 15 - prizes.length * 0.35);
+      ctx.font = `700 ${nameFont}px Inter, sans-serif`;
+      ctx.fillText(prize.name.toUpperCase().slice(0, 12), radius - 22, 5);
+      ctx.textAlign = "left";
+      ctx.font = `${nameFont + 2}px sans-serif`;
+      ctx.fillText(prize.icon, radius * 0.28, 6);
       ctx.restore();
     });
 
-    ctx.restore();
-
-    // Pointer
+    // Outer rim
     ctx.beginPath();
-    ctx.moveTo(size - 8, center - 10);
-    ctx.lineTo(size + 2, center);
-    ctx.lineTo(size - 8, center + 10);
-    ctx.closePath();
-    ctx.fillStyle = "hsl(var(--accent))";
-    ctx.fill();
+    ctx.arc(center, center, radius + 2, 0, Math.PI * 2);
+    ctx.strokeStyle = "#1E293B";
+    ctx.lineWidth = 6;
+    ctx.stroke();
+
+    ctx.restore();
   };
 
   const spin = async () => {
@@ -127,29 +168,28 @@ const FortuneWheel = () => {
 
     const prize = (data as any).prize;
     const prizeIndex = prizes.findIndex((p) => p.id === prize.id);
-    const sliceAngle = 360 / prizes.length;
-    // Land on the winning slice (rotate so it aligns with the right-side pointer)
-    const targetAngle = 360 - (prizeIndex * sliceAngle + sliceAngle / 2);
-    const spins = 5 + Math.random() * 3;
-    const finalRotation = spins * 360 + targetAngle;
+    const sliceDeg = 360 / prizes.length;
+    // Pointer at top = -90° in canvas coords (0°=east, +cw). Land slice center at 270°.
+    const targetAngle = 270 - (prizeIndex * sliceDeg + sliceDeg / 2);
+    const spins = 6 + Math.random() * 2;
+    const currentMod = ((rotation % 360) + 360) % 360;
+    const delta = ((targetAngle - currentMod) % 360 + 360) % 360;
+    const finalRotation = rotation + spins * 360 + delta;
 
-    // Animate
-    const duration = 4000;
+    const duration = 4500;
     const startTime = Date.now();
     const startRotation = rotation;
 
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const currentRotation = startRotation + finalRotation * eased;
-      setRotation(currentRotation % 360);
+      const eased = 1 - Math.pow(1 - progress, 4);
+      const currentRotation = startRotation + (finalRotation - startRotation) * eased;
+      setRotation(currentRotation);
 
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
-        setRotation(targetAngle % 360);
         setSpinning(false);
         setHasSpunToday(true);
         setWonPrize(prize);
@@ -163,47 +203,175 @@ const FortuneWheel = () => {
     requestAnimationFrame(animate);
   };
 
-  if (loading || prizes.length === 0) return null;
+  if (loading || prizes.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
-    <div className="rounded-xl border bg-card p-5 shadow-product text-center">
-      <h3 className="text-lg font-bold text-foreground mb-1">🎡 Koło Fortuny</h3>
-      <p className="text-xs text-muted-foreground mb-3">Kręć codziennie i wygrywaj punkty!</p>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+      {/* Wheel */}
+      <div className="relative flex justify-center">
+        {/* Ambient glow */}
+        <div className="absolute inset-0 rounded-full bg-accent/20 blur-3xl -z-10" aria-hidden />
 
-      <div className="relative mx-auto" style={{ width: 240, height: 240 }}>
-        <canvas ref={canvasRef} width={240} height={240} className="rounded-full" />
+        <div className="relative" style={{ width: WHEEL_SIZE, height: WHEEL_SIZE }}>
+          {/* Outer bezel */}
+          <div
+            className="absolute inset-0 rounded-full border-[12px] border-card shadow-[0_0_60px_-15px_hsl(var(--accent)/0.5)]"
+            aria-hidden
+          />
+
+          <canvas
+            ref={canvasRef}
+            style={{ width: WHEEL_SIZE, height: WHEEL_SIZE, willChange: "transform" }}
+            className="rounded-full"
+          />
+
+          {/* Pointer (top) */}
+          <div className="absolute left-1/2 -translate-x-1/2 -top-3 z-30 pointer-events-none">
+            <div
+              className="w-8 h-11 bg-accent shadow-lg"
+              style={{ clipPath: "polygon(50% 100%, 0 0, 100% 0)" }}
+            />
+            <div className="mx-auto w-3 h-3 -mt-2 rounded-full bg-accent-foreground border-2 border-accent" />
+          </div>
+
+          {/* Center hub / CTA */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <button
+              onClick={spin}
+              disabled={!user || spinning || hasSpunToday}
+              className="z-20 w-32 h-32 rounded-full bg-accent hover:bg-accent/90 border-8 border-card shadow-[0_0_30px_hsl(var(--accent)/0.6)] flex flex-col items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:scale-100"
+              aria-label="Zakręć kołem"
+            >
+              {spinning ? (
+                <Loader2 className="h-8 w-8 animate-spin text-accent-foreground" />
+              ) : hasSpunToday ? (
+                <>
+                  <Clock className="h-6 w-6 text-accent-foreground" />
+                  <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-accent-foreground">Jutro</span>
+                </>
+              ) : !user ? (
+                <span className="text-accent-foreground font-extrabold text-sm uppercase tracking-tight px-2 text-center leading-tight">Zaloguj się</span>
+              ) : (
+                <>
+                  <Sparkles className="h-6 w-6 text-accent-foreground" />
+                  <span className="mt-0.5 text-accent-foreground font-extrabold text-lg uppercase tracking-tight">Zakręć</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {wonPrize && (
-        <div className="mt-3 rounded-lg bg-accent/10 border border-accent/30 p-3 animate-fade-in">
-          <span className="text-2xl">{wonPrize.icon}</span>
-          <p className="font-bold text-foreground">{wonPrize.name}</p>
-          {wonPrize.points_reward > 0 && (
-            <p className="text-sm text-accent font-semibold">+{wonPrize.points_reward} pkt</p>
-          )}
+      {/* Status panel */}
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-accent font-extrabold text-4xl tracking-tight">Koło Fortuny</h1>
+          <p className="text-muted-foreground text-lg">Twoja codzienna szansa na wyjątkowe nagrody.</p>
         </div>
-      )}
 
-      <div className="mt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-card/60 border border-border p-5 rounded-2xl">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                <Flame className="w-5 h-5 text-accent" />
+              </div>
+              <span className="text-muted-foreground text-sm font-medium">Twój Streak</span>
+            </div>
+            <div className="text-2xl font-bold text-foreground">
+              {streak} {streak === 1 ? "dzień" : "dni"} z rzędu
+            </div>
+          </div>
+
+          <div className="bg-card/60 border border-border p-5 rounded-2xl">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-accent" />
+              </div>
+              <span className="text-muted-foreground text-sm font-medium">Następna szansa</span>
+            </div>
+            <div className="text-2xl font-bold text-foreground font-mono tabular-nums">{countdown}</div>
+          </div>
+        </div>
+
+        {/* Status banner */}
         {!user ? (
-          <Button asChild size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
-            <Link to="/register">Zaloguj się, żeby kręcić</Link>
-          </Button>
+          <div className="relative bg-gradient-to-r from-accent/10 to-transparent border-l-4 border-accent p-6 rounded-r-2xl">
+            <h3 className="text-foreground font-bold text-lg leading-tight">Zaloguj się, aby zagrać</h3>
+            <p className="text-muted-foreground mt-1 mb-3">Załóż konto i odbieraj punkty codziennie.</p>
+            <Button asChild size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
+              <Link to="/register">Załóż konto</Link>
+            </Button>
+          </div>
+        ) : wonPrize ? (
+          <div className="relative bg-gradient-to-r from-accent/15 to-transparent border-l-4 border-accent p-6 rounded-r-2xl animate-fade-in">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-xl">
+                {wonPrize.icon}
+              </div>
+              <div>
+                <h3 className="text-foreground font-bold text-lg leading-tight">Wygrana: {wonPrize.name}</h3>
+                {wonPrize.points_reward > 0 ? (
+                  <p className="text-accent font-semibold mt-1">+{wonPrize.points_reward} punktów zapisane na koncie</p>
+                ) : (
+                  <p className="text-muted-foreground mt-1">Spróbuj jutro — kolejny los czeka!</p>
+                )}
+              </div>
+            </div>
+          </div>
         ) : hasSpunToday ? (
-          <Button size="sm" disabled className="w-full">
-            Wróć jutro! ⏰
-          </Button>
+          <div className="relative bg-gradient-to-r from-accent/10 to-transparent border-l-4 border-accent p-6 rounded-r-2xl">
+            <div className="flex items-start gap-4">
+              <div className="mt-1">
+                <div className="w-6 h-6 rounded-full border-2 border-accent flex items-center justify-center">
+                  <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-foreground font-bold text-lg leading-tight">Już kręcono dzisiaj</h3>
+                <p className="text-muted-foreground mt-1">Wróć po północy, aby odebrać kolejny bonus i utrzymać swoją serię!</p>
+              </div>
+            </div>
+          </div>
         ) : (
-          <Button
-            size="sm"
-            onClick={spin}
-            disabled={spinning}
-            className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-          >
-            {spinning ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-            {spinning ? "Losowanie..." : "Zakręć kołem! 🎰"}
-          </Button>
+          <div className="relative bg-gradient-to-r from-accent/10 to-transparent border-l-4 border-accent p-6 rounded-r-2xl">
+            <div className="flex items-start gap-4">
+              <Gift className="h-6 w-6 text-accent mt-0.5" />
+              <div>
+                <h3 className="text-foreground font-bold text-lg leading-tight">Dzisiejszy los czeka</h3>
+                <p className="text-muted-foreground mt-1">Kliknij środek koła, aby zakręcić.</p>
+              </div>
+            </div>
+          </div>
         )}
+
+        {/* Prize list */}
+        <div className="bg-card/40 border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Trophy className="h-4 w-4 text-accent" />
+            <h4 className="text-sm font-bold text-foreground uppercase tracking-wider">Możliwe nagrody</h4>
+          </div>
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
+            {prizes.map((p) => (
+              <li key={p.id} className="flex items-center gap-2 text-sm">
+                <span className="text-base">{p.icon}</span>
+                <span className="text-muted-foreground truncate flex-1">{p.name}</span>
+                {p.points_reward > 0 && (
+                  <span className="text-accent font-semibold text-xs">+{p.points_reward}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="text-muted-foreground text-xs uppercase tracking-widest text-center lg:text-left">
+          Jedno zakręcenie dziennie · Nagrody dodawane automatycznie
+        </p>
       </div>
     </div>
   );

@@ -5,11 +5,12 @@ const FortuneWheelPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <section className="container mx-auto px-4 py-12 animate-fade-in">
-        <div className="mx-auto max-w-md">
+      <section className="container mx-auto px-4 py-12 lg:py-16 animate-fade-in">
+        <div className="mx-auto max-w-6xl">
           <FortuneWheel />
         </div>
       </section>
+
       <footer className="border-t bg-card py-8 text-center text-sm text-muted-foreground">
         <div className="container mx-auto px-4">
           © 2026 NetSzukacz.pl — Porównywarka cen i finansów. Wszystkie prawa zastrzeżone.
