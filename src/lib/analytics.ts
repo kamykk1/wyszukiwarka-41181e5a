@@ -24,7 +24,7 @@ export async function trackEvent(
     const user_id = userData?.user?.id ?? null;
     await supabase.from("analytics_events").insert({
       event_name,
-      payload,
+      payload: payload as never,
       user_id,
       session_id: getSessionId(),
     });
