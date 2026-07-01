@@ -226,9 +226,9 @@ const FortuneWheel = () => {
 
     const { data, error } = await supabase.rpc("spin_wheel");
 
-    if (error || !data || (data as { error?: string }).error) {
-      const errCode = (data as { error?: string })?.error ?? "rpc_error";
-      const msg = (data as { message?: string })?.message || "Nie udało się zakręcić kołem.";
+    if (error || !data || (data as unknown as { error?: string }).error) {
+      const errCode = (data as unknown as { error?: string })?.error ?? "rpc_error";
+      const msg = (data as unknown as { message?: string })?.message || "Nie udało się zakręcić kołem.";
       trackEvent("wheel_error", { code: errCode, message: msg });
       toast({ title: "Błąd", description: msg, variant: "destructive" });
       setSpinning(false);
