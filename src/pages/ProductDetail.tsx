@@ -35,7 +35,7 @@ const ProductDetail = () => {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { createAlert, getAlertForProduct } = usePriceAlerts();
   const existingAlert = getAlertForProduct(product.name);
-  const { trackPurchaseClick, confirmPurchase } = useClickPoints();
+  const { trackPurchaseClick } = useClickPoints();
 
   return (
     <div className="min-h-screen bg-background">
@@ -171,12 +171,6 @@ const ProductDetail = () => {
                       >
                         Kup <ExternalLink className="h-3.5 w-3.5" />
                       </a>
-                      <button
-                        onClick={() => confirmPurchase(product.name, store?.name || "")}
-                        className="flex items-center justify-center gap-1 rounded-lg bg-success/10 px-3 py-1.5 text-xs font-medium text-success hover:bg-success/20 transition-colors"
-                      >
-                        <ShoppingBag className="h-3 w-3" /> +10 pkt
-                      </button>
                     </div>
                   </div>
                 </div>

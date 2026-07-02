@@ -244,7 +244,7 @@ const AdminStores = () => {
     );
   }
 
-  const callbackUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tradedoubler-callback?secret=cba548542a41d2d2`;
+  const callbackUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tradedoubler-callback`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -315,7 +315,7 @@ const AdminStores = () => {
               </Button>
             </div>
             <p className="text-muted-foreground mt-1.5">
-              Wklej ten URL w panelu Tradedoubler jako Postback URL.
+              Wklej ten URL w panelu Tradedoubler jako Postback URL i dopisz na końcu <code className="bg-background px-1 rounded">?secret=&lt;TRADEDOUBLER_WEBHOOK_SECRET&gt;</code> (wartość sekretu znajdziesz w ustawieniach Cloud → Sekrety; nie umieszczamy jej w kodzie frontendu).
               W linku afiliacyjnym przekazuj email użytkownika jako parametr <code className="bg-background px-1 rounded">epi1</code>.
             </p>
           </div>

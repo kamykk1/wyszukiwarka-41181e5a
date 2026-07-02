@@ -1147,19 +1147,10 @@ export type Database = {
         }
         Returns: Json
       }
-      award_purchase_points:
-        | {
-            Args: { _product_name: string; _store_name: string }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _product_name: string
-              _store_name: string
-              _user_id: string
-            }
-            Returns: Json
-          }
+      award_purchase_points: {
+        Args: { _product_name: string; _store_name: string; _user_id: string }
+        Returns: Json
+      }
       check_daily_streak: { Args: never; Returns: Json }
       get_email_by_username: { Args: { _username: string }; Returns: string }
       get_or_create_referral_code: { Args: never; Returns: string }
