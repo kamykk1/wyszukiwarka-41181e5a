@@ -35,7 +35,7 @@ const ProductDetail = () => {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { createAlert, getAlertForProduct } = usePriceAlerts();
   const existingAlert = getAlertForProduct(product.name);
-  const { trackPurchaseClick, confirmPurchase } = useClickPoints();
+  const { trackPurchaseClick } = useClickPoints();
 
   return (
     <div className="min-h-screen bg-background">
