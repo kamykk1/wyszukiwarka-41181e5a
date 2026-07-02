@@ -1,6 +1,30 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Escape HTML special chars — used for plain-text fields injected into HTML emails
+function escapeHtml(str: string): string {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// Strip <script>, <style>, iframes, on* handlers, and javascript: URLs from admin-provided HTML
+function sanitizeHtml(html: string): string {
+  return String(html ?? "")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "")
+    .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, "")
+    .replace(/<embed\b[^>]*>/gi, "")
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
+    .replace(/\son\w+\s*=\s*[^\s>]+/gi, "")
+    .replace(/javascript:/gi, "");
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -86,21 +110,26 @@ Deno.serve(async (req) => {
       ? "https://wyszukiwarka.lovable.app"
       : supabaseUrl;
 
+    // Sanitize admin-provided template and message; escape plain-text fields
+    const safeTemplate = sanitizeHtml(template);
+    const safeSubject = escapeHtml(subject);
+    const safeMessage = sanitizeHtml(String(message ?? "")).replace(/\n/g, "<br/>");
+
     let sent = 0;
     for (const profile of profiles) {
       const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
       if (!authUser?.user?.email) continue;
 
-      const userName = profile.first_name || profile.name || "";
+      const userName = escapeHtml(profile.first_name || profile.name || "");
       const clickButton = points_reward > 0
-        ? `<p><a href="${appUrl}/mailing-click?campaign=${campaign_id}" style="display:inline-block;padding:10px 20px;background:#ff6b35;color:white;text-decoration:none;border-radius:6px;">Odbierz ${points_reward} punktów →</a></p>`
+        ? `<p><a href="${appUrl}/mailing-click?campaign=${encodeURIComponent(campaign_id)}" style="display:inline-block;padding:10px 20px;background:#ff6b35;color:white;text-decoration:none;border-radius:6px;">Odbierz ${Number(points_reward) || 0} punktów →</a></p>`
         : "";
 
-      const finalHtml = template
-        .replace(/\{\{subject\}\}/g, subject)
+      const finalHtml = safeTemplate
+        .replace(/\{\{subject\}\}/g, safeSubject)
         .replace(/\{\{name_greeting\}\}/g, userName ? `, ${userName}` : "")
         .replace(/\{\{name\}\}/g, userName)
-        .replace(/\{\{message\}\}/g, message.replace(/\n/g, "<br/>"))
+        .replace(/\{\{message\}\}/g, safeMessage)
         .replace(/\{\{click_button\}\}/g, clickButton);
 
       await sendEmail(authUser.user.email, subject, finalHtml);
