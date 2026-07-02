@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Flame, Clock, Sparkles, Trophy, Gift, History } from "lucide-react";
 import { Link } from "react-router-dom";
 import { trackEvent } from "@/lib/analytics";
+import { computeTargetRotation, segmentUnderPointer } from "@/lib/wheelMath";
+
+const log = (...args: unknown[]) => console.info("[FortuneWheel]", ...args);
+const warn = (...args: unknown[]) => console.warn("[FortuneWheel]", ...args);
 
 interface Prize {
   id: string;
