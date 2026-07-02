@@ -191,13 +191,6 @@ export type Database = {
             referencedRelation: "partner_integrations"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "financial_products_partner_id_fkey"
-            columns: ["partner_id"]
-            isOneToOne: false
-            referencedRelation: "partner_integrations_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       mailing_campaigns: {
@@ -509,13 +502,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "partner_tasks_partner_id_fkey"
-            columns: ["partner_id"]
-            isOneToOne: false
-            referencedRelation: "partner_integrations_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "partner_tasks_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -596,6 +582,7 @@ export type Database = {
           phone: string | null
           points_threshold: number | null
           postal_code: string | null
+          show_on_leaderboard: boolean
           street: string | null
           updated_at: string
           user_id: string
@@ -615,6 +602,7 @@ export type Database = {
           phone?: string | null
           points_threshold?: number | null
           postal_code?: string | null
+          show_on_leaderboard?: boolean
           street?: string | null
           updated_at?: string
           user_id: string
@@ -634,6 +622,7 @@ export type Database = {
           phone?: string | null
           points_threshold?: number | null
           postal_code?: string | null
+          show_on_leaderboard?: boolean
           street?: string | null
           updated_at?: string
           user_id?: string
@@ -1052,39 +1041,6 @@ export type Database = {
           name: string | null
           rank: number | null
           total_earned: number | null
-        }
-        Relationships: []
-      }
-      partner_integrations_public: {
-        Row: {
-          category_calc_mode: Json | null
-          category_points: Json | null
-          description: string | null
-          display_name: string | null
-          enabled: boolean | null
-          id: string | null
-          name: string | null
-          task_points: number | null
-        }
-        Insert: {
-          category_calc_mode?: Json | null
-          category_points?: Json | null
-          description?: string | null
-          display_name?: string | null
-          enabled?: boolean | null
-          id?: string | null
-          name?: string | null
-          task_points?: number | null
-        }
-        Update: {
-          category_calc_mode?: Json | null
-          category_points?: Json | null
-          description?: string | null
-          display_name?: string | null
-          enabled?: boolean | null
-          id?: string | null
-          name?: string | null
-          task_points?: number | null
         }
         Relationships: []
       }
