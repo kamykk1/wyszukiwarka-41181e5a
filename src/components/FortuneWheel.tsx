@@ -117,10 +117,13 @@ const FortuneWheel = () => {
 
   useEffect(() => {
     const fetchPrizes = async () => {
+      // IMPORTANT: order must match server-side spin_wheel() which uses ORDER BY id.
+      // Without this, the animation lands on a segment that doesn't match the RPC result.
       const { data } = await supabase
         .from("wheel_prizes")
         .select("id, name, points_reward, color, icon, probability_weight")
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .order("id", { ascending: true });
       setPrizes((data as Prize[]) || []);
       setLoading(false);
     };
