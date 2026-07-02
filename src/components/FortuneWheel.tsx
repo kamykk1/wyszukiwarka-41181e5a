@@ -241,11 +241,15 @@ const FortuneWheel = () => {
     setWonPrize(null);
     setStatusMsg("Kręcimy kołem…");
 
+    const rpcStart = Date.now();
     const { data, error } = await supabase.rpc("spin_wheel");
+    const rpcMs = Date.now() - rpcStart;
+    log(`RPC spin_wheel returned in ${rpcMs}ms`, { data, error });
 
     if (error || !data || (data as unknown as { error?: string }).error) {
       const errCode = (data as unknown as { error?: string })?.error ?? "rpc_error";
       const msg = (data as unknown as { message?: string })?.message || "Nie udało się zakręcić kołem.";
+      warn("spin_wheel failed:", errCode, msg, error);
       trackEvent("wheel_error", { code: errCode, message: msg });
       toast({ title: "Błąd", description: msg, variant: "destructive" });
       setSpinning(false);
@@ -254,16 +258,31 @@ const FortuneWheel = () => {
       return;
     }
 
-    const prize = (data as unknown as { prize: Prize }).prize;
-    const prizeIndex = prizes.findIndex((p) => p.id === prize.id);
-    const sliceDeg = 360 / prizes.length;
-    const targetAngle = 270 - (prizeIndex * sliceDeg + sliceDeg / 2);
-    const spins = 6 + Math.random() * 2;
-    const currentMod = ((rotation % 360) + 360) % 360;
-    const delta = ((targetAngle - currentMod) % 360 + 360) % 360;
-    const finalRotation = rotation + spins * 360 + delta;
+    type ServerPrize = Prize & { segment_index?: number; total_segments?: number };
+    const prize = (data as unknown as { prize: ServerPrize }).prize;
+    const clientIndex = prizes.findIndex((p) => p.id === prize.id);
+    const serverIndex = typeof prize.segment_index === "number" ? prize.segment_index : clientIndex;
+    const serverTotal = typeof prize.total_segments === "number" ? prize.total_segments : prizes.length;
 
-    trackEvent("wheel_animation_start", { prize_id: prize.id, prize_name: prize.name });
+    // ── Diagnostic: client/server segment alignment ──────────────────────────
+    if (clientIndex < 0) {
+      warn("Prize returned by RPC is not in client prize list", { prizeId: prize.id, clientPrizes: prizes.map((p) => p.id) });
+    }
+    if (serverTotal !== prizes.length) {
+      warn(`Segment count mismatch: server=${serverTotal} client=${prizes.length}. Prize list is stale.`);
+      trackEvent("wheel_desync", { reason: "total_mismatch", server_total: serverTotal, client_total: prizes.length });
+    }
+    if (clientIndex !== serverIndex) {
+      warn(`Segment index mismatch: server=${serverIndex} client=${clientIndex} for prize "${prize.name}". Prize order out of sync.`);
+      trackEvent("wheel_desync", { reason: "index_mismatch", server_index: serverIndex, client_index: clientIndex, prize_id: prize.id });
+    }
+
+    // Always animate to the SERVER-reported segment index — server is source of truth.
+    const spins = 6 + Math.random() * 2;
+    const finalRotation = computeTargetRotation(serverIndex, serverTotal, rotation, spins);
+    log(`Animating to segment ${serverIndex}/${serverTotal} for prize "${prize.name}" (+${prize.points_reward} pkt), final rotation=${finalRotation.toFixed(1)}°`);
+
+    trackEvent("wheel_animation_start", { prize_id: prize.id, prize_name: prize.name, segment_index: serverIndex });
 
     const duration = 4500;
     const startTime = Date.now();
@@ -281,12 +300,48 @@ const FortuneWheel = () => {
       } else {
         setSpinning(false);
         setHasSpunToday(true);
+
+        // ── Post-animation verification ─────────────────────────────────────
+        const landedIndex = segmentUnderPointer(finalRotation, serverTotal);
+        const landedPrize = prizes[landedIndex];
+        const geometryOk = landedIndex === serverIndex;
+        const pointsOk = !landedPrize || landedPrize.points_reward === prize.points_reward;
+
+        if (!geometryOk) {
+          warn(`Animation ended on segment ${landedIndex} but server said ${serverIndex}. Rendering error.`);
+        }
+        if (!pointsOk) {
+          warn(`Points mismatch: pointer shows "${landedPrize?.name}" (+${landedPrize?.points_reward}) but RPC awarded +${prize.points_reward}.`);
+        }
+
+        if (!geometryOk || !pointsOk) {
+          trackEvent("wheel_verify_fail", {
+            geometry_ok: geometryOk,
+            points_ok: pointsOk,
+            server_index: serverIndex,
+            landed_index: landedIndex,
+            server_points: prize.points_reward,
+            landed_points: landedPrize?.points_reward ?? null,
+          });
+          toast({
+            title: "Niezgodność wyniku",
+            description: `Koło wskazało "${landedPrize?.name ?? "?"}" (+${landedPrize?.points_reward ?? 0} pkt), ale system zapisał "${prize.name}" (+${prize.points_reward} pkt). Odśwież stronę — nagrody mogły zostać zaktualizowane. Punkty przyznane zgodnie z serwerem.`,
+            variant: "destructive",
+          });
+          setStatusMsg(`Uwaga: rozjazd wskazania koła i zapisu (${prize.points_reward} pkt zostały zapisane).`);
+          setWonPrize(prize);
+          if (user) loadHistory(user.id);
+          return;
+        }
+
         setWonPrize(prize);
         trackEvent("wheel_spin_result", {
           prize_id: prize.id,
           prize_name: prize.name,
           points: prize.points_reward,
+          segment_index: serverIndex,
         });
+        log(`✓ Verified: segment ${landedIndex} matches server, +${prize.points_reward} pkt`);
         const announce = prize.points_reward > 0
           ? `Wygrana: ${prize.name}. Otrzymujesz ${prize.points_reward} punktów.`
           : `Wynik: ${prize.name}. Spróbuj jutro.`;
