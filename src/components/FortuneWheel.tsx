@@ -147,6 +147,12 @@ const FortuneWheel = () => {
     };
     fetchPrizes();
 
+    // Public leaderboard — top 3 recent winners (usernames masked server-side).
+    (async () => {
+      const { data } = await supabase.rpc("get_recent_wheel_winners");
+      if (Array.isArray(data)) setRecentWinners(data as typeof recentWinners);
+    })();
+
     if (user) {
       trackEvent("wheel_page_view", { authenticated: true });
       (async () => {
@@ -160,12 +166,10 @@ const FortuneWheel = () => {
             .maybeSingle(),
           supabase.from("user_streaks").select("current_streak").eq("user_id", user.id).maybeSingle(),
         ]);
-        if (lastSpin?.created_at) {
-          const nextAt = new Date(lastSpin.created_at).getTime() + 24 * 3_600_000;
-          if (nextAt > Date.now()) {
-            setHasSpunToday(true);
-            setNextAvailableAt(nextAt);
-          }
+        const unlockAt = computeUnlockAt(lastSpin?.created_at ?? null);
+        if (unlockAt && !isUnlocked(unlockAt, serverOffsetMs)) {
+          setHasSpunToday(true);
+          setNextAvailableAt(unlockAt);
         }
         if (streakRow?.current_streak) setStreak(streakRow.current_streak);
         loadHistory(user.id);
@@ -175,6 +179,7 @@ const FortuneWheel = () => {
       trackEvent("wheel_page_view", { authenticated: false });
     }
   }, [user, loadHistory]);
+
 
   useEffect(() => { drawWheel(); }, [prizes, rotation, wheelSize]);
 
