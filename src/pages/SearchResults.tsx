@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useOfferSearch, type SortKey } from "@/hooks/useOfferSearch";
 import { OfferCard } from "@/components/search/OfferCard";
 import { PartnerStatusBar } from "@/components/search/PartnerStatusBar";
+import { applySeo } from "@/lib/seo";
 
 interface TDProgram {
   id: string;
@@ -120,6 +121,19 @@ const SearchResults = () => {
   const [tdProductsLoading, setTdProductsLoading] = useState(false);
   const [tdProductsTotal, setTdProductsTotal] = useState(0);
   const { user } = useAuth();
+
+  useEffect(() => {
+    const q = query.trim();
+    applySeo({
+      title: q
+        ? `${q} — Najlepsze oferty z wynagrodzeniem | NetSzukacz.pl`
+        : "Najlepsze oferty z wynagrodzeniem — wyniki wyszukiwania | NetSzukacz.pl",
+      description: q
+        ? `Najlepsze oferty z wynagrodzeniem dla „${q}” — porównaj ceny, cashback i punkty w NetSzukacz.pl.`
+        : "Najlepsze oferty z wynagrodzeniem — przeszukuj sklepy partnerskie, sortuj po najniższej cenie i zdobywaj cashback.",
+      canonicalPath: `/search${q ? `?q=${encodeURIComponent(q)}` : ""}`,
+    });
+  }, [query]);
 
   const { offers: unifiedOffers, partners, loading: unifiedLoading } = useOfferSearch(query, sortBy);
 

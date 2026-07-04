@@ -7,6 +7,7 @@ import EditableBanner from "@/components/EditableBanner";
 import { stores } from "@/data/mockProducts";
 import { supabase } from "@/integrations/supabase/client";
 import DOMPurify from "dompurify";
+import { applySeo } from "@/lib/seo";
 
 const features = [
   { icon: TrendingDown, title: "Najniższe ceny", desc: "Porównujemy ceny z wielu sklepów" },
@@ -34,6 +35,12 @@ const Index = () => {
   const [heroHtml, setHeroHtml] = useState<string>(defaultHeroHtml);
 
   useEffect(() => {
+    applySeo({
+      title: "Najlepsze oferty z wynagrodzeniem — NetSzukacz.pl",
+      description:
+        "Najlepsze oferty z wynagrodzeniem: porównuj ceny, konta, kredyty i lokaty, zbieraj punkty i cashback za codzienne zakupy.",
+      canonicalPath: "/",
+    });
     const fetchHero = async () => {
       const { data } = await supabase
         .from("page_settings")
