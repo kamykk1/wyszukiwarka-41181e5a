@@ -297,12 +297,20 @@ const FortuneWheel = () => {
       toast({ title: "Błąd", description: msg, variant: "destructive" });
       setSpinning(false);
       setStatusMsg(`Błąd: ${msg}`);
-      if (errCode === "already_spun") setHasSpunToday(true);
+      if (errCode === "already_spun") {
+        setHasSpunToday(true);
+        const nextIso = (data as unknown as { next_available_at?: string })?.next_available_at;
+        if (nextIso) setNextAvailableAt(new Date(nextIso).getTime());
+      }
       return;
     }
 
     type ServerPrize = Prize & { segment_index?: number; total_segments?: number };
     const prize = (data as unknown as { prize: ServerPrize }).prize;
+    const nextIso = (data as unknown as { next_available_at?: string })?.next_available_at;
+    if (nextIso) setNextAvailableAt(new Date(nextIso).getTime());
+    else setNextAvailableAt(Date.now() + 24 * 3_600_000);
+
 
     // Working copy of the prize list — may be replaced by an auto-resync fetch.
     let workingPrizes: Prize[] = prizes;
