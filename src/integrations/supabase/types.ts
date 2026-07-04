@@ -1151,6 +1151,16 @@ export type Database = {
       check_daily_streak: { Args: never; Returns: Json }
       get_email_by_username: { Args: { _username: string }; Returns: string }
       get_or_create_referral_code: { Args: never; Returns: string }
+      get_recent_wheel_winners: {
+        Args: never
+        Returns: {
+          created_at: string
+          masked_username: string
+          points_won: number
+          prize_icon: string
+          prize_name: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

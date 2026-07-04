@@ -7,6 +7,15 @@ import { Loader2, Flame, Clock, Sparkles, Trophy, Gift, History } from "lucide-r
 import { Link } from "react-router-dom";
 import { trackEvent } from "@/lib/analytics";
 import { computeTargetRotation, segmentUnderPointer } from "@/lib/wheelMath";
+import {
+  computeServerOffsetMs,
+  computeUnlockAt,
+  formatRemaining,
+  isUnlocked,
+  maskUsername,
+  resolveNextAvailableAt,
+} from "@/lib/wheelTime";
+
 
 const log = (...args: unknown[]) => console.info("[FortuneWheel]", ...args);
 const warn = (...args: unknown[]) => console.warn("[FortuneWheel]", ...args);
@@ -32,19 +41,17 @@ interface SpinHistoryEntry {
 const MAX_WHEEL = 420;
 const MIN_WHEEL = 260;
 
-const useCountdown = (targetMs: number | null) => {
-  const [now, setNow] = useState(Date.now());
+const useCountdown = (targetMs: number | null, serverOffsetMs: number) => {
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, []);
-  if (!targetMs) return "--:--:--";
-  const diff = Math.max(0, targetMs - now);
-  const h = Math.floor(diff / 3_600_000);
-  const m = Math.floor((diff % 3_600_000) / 60_000);
-  const s = Math.floor((diff % 60_000) / 1000);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  // `tick` deliberately triggers re-render; `formatRemaining` reads Date.now() itself.
+  void tick;
+  return formatRemaining(targetMs, serverOffsetMs);
 };
+
 
 
 const useResponsiveWheelSize = (ref: React.RefObject<HTMLDivElement>) => {
@@ -80,11 +87,16 @@ const FortuneWheel = () => {
   const [loading, setLoading] = useState(true);
   const [statusMsg, setStatusMsg] = useState("");
   const [nextAvailableAt, setNextAvailableAt] = useState<number | null>(null);
+  const [serverOffsetMs, setServerOffsetMs] = useState(0);
+  const [recentWinners, setRecentWinners] = useState<
+    { masked_username: string; prize_name: string; prize_icon: string; points_won: number; created_at: string }[]
+  >([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wheelWrapRef = useRef<HTMLDivElement>(null);
   const spinBtnRef = useRef<HTMLButtonElement>(null);
   const wheelSize = useResponsiveWheelSize(wheelWrapRef);
-  const countdown = useCountdown(nextAvailableAt);
+  const countdown = useCountdown(nextAvailableAt, serverOffsetMs);
+
 
 
   const loadHistory = useCallback(async (uid: string) => {
@@ -135,6 +147,13 @@ const FortuneWheel = () => {
     };
     fetchPrizes();
 
+    // Public leaderboard — top 3 recent winners (usernames masked server-side).
+    (async () => {
+      const { data } = await (supabase.rpc as any)("get_recent_wheel_winners");
+      if (Array.isArray(data)) setRecentWinners(data as typeof recentWinners);
+    })();
+
+
     if (user) {
       trackEvent("wheel_page_view", { authenticated: true });
       (async () => {
@@ -148,12 +167,10 @@ const FortuneWheel = () => {
             .maybeSingle(),
           supabase.from("user_streaks").select("current_streak").eq("user_id", user.id).maybeSingle(),
         ]);
-        if (lastSpin?.created_at) {
-          const nextAt = new Date(lastSpin.created_at).getTime() + 24 * 3_600_000;
-          if (nextAt > Date.now()) {
-            setHasSpunToday(true);
-            setNextAvailableAt(nextAt);
-          }
+        const unlockAt = computeUnlockAt(lastSpin?.created_at ?? null);
+        if (unlockAt && !isUnlocked(unlockAt, serverOffsetMs)) {
+          setHasSpunToday(true);
+          setNextAvailableAt(unlockAt);
         }
         if (streakRow?.current_streak) setStreak(streakRow.current_streak);
         loadHistory(user.id);
@@ -164,12 +181,13 @@ const FortuneWheel = () => {
     }
   }, [user, loadHistory]);
 
+
   useEffect(() => { drawWheel(); }, [prizes, rotation, wheelSize]);
 
   // Auto-unlock the wheel the moment the 24h countdown expires.
   useEffect(() => {
     if (!nextAvailableAt || !hasSpunToday) return;
-    const remaining = nextAvailableAt - Date.now();
+    const remaining = nextAvailableAt - (Date.now() + serverOffsetMs);
     if (remaining <= 0) {
       setHasSpunToday(false);
       setNextAvailableAt(null);
@@ -180,7 +198,7 @@ const FortuneWheel = () => {
       setNextAvailableAt(null);
     }, remaining + 250);
     return () => clearTimeout(t);
-  }, [nextAvailableAt, hasSpunToday]);
+  }, [nextAvailableAt, hasSpunToday, serverOffsetMs]);
 
 
   const drawWheel = () => {
@@ -306,6 +324,15 @@ const FortuneWheel = () => {
     const rpcMs = Date.now() - rpcStart;
     log(`RPC spin_wheel returned in ${rpcMs}ms`, { data, error });
 
+    // Sync clock drift: use the midpoint of the RPC round-trip as the client anchor.
+    const serverNowIso = (data as unknown as { server_now?: string })?.server_now;
+    if (serverNowIso) {
+      const clientAnchor = rpcStart + Math.floor(rpcMs / 2);
+      const offset = computeServerOffsetMs(serverNowIso, clientAnchor);
+      setServerOffsetMs(offset);
+      log(`Server clock offset detected: ${offset}ms`);
+    }
+
     if (error || !data || (data as unknown as { error?: string }).error) {
       const errCode = (data as unknown as { error?: string })?.error ?? "rpc_error";
       const msg = (data as unknown as { message?: string })?.message || "Nie udało się zakręcić kołem.";
@@ -317,7 +344,9 @@ const FortuneWheel = () => {
       if (errCode === "already_spun") {
         setHasSpunToday(true);
         const nextIso = (data as unknown as { next_available_at?: string })?.next_available_at;
-        if (nextIso) setNextAvailableAt(new Date(nextIso).getTime());
+        const lastIso = (data as unknown as { last_spin_at?: string })?.last_spin_at;
+        const nextAt = resolveNextAvailableAt(nextIso, lastIso);
+        if (nextAt) setNextAvailableAt(nextAt);
       }
       return;
     }
@@ -325,8 +354,8 @@ const FortuneWheel = () => {
     type ServerPrize = Prize & { segment_index?: number; total_segments?: number };
     const prize = (data as unknown as { prize: ServerPrize }).prize;
     const nextIso = (data as unknown as { next_available_at?: string })?.next_available_at;
-    if (nextIso) setNextAvailableAt(new Date(nextIso).getTime());
-    else setNextAvailableAt(Date.now() + 24 * 3_600_000);
+    setNextAvailableAt(resolveNextAvailableAt(nextIso, null) ?? Date.now() + 24 * 3_600_000);
+
 
 
     // Working copy of the prize list — may be replaced by an auto-resync fetch.
@@ -475,7 +504,9 @@ const FortuneWheel = () => {
     : "Zakręć kołem fortuny";
 
   return (
+    <>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+
       {/* Screen-reader live region */}
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {statusMsg}
@@ -682,7 +713,37 @@ const FortuneWheel = () => {
         </p>
       </div>
     </div>
+
+    {/* Ranking: 3 ostatnich zwycięzców (loginy zamaskowane) */}
+    <section aria-label="Ostatni zwycięzcy" className="mt-8 sm:mt-10 bg-card/60 border border-border rounded-2xl p-4 sm:p-6 max-w-2xl mx-auto">
+      <div className="flex items-center gap-2 mb-4">
+        <Trophy className="h-4 w-4 text-accent" aria-hidden="true" />
+        <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Ostatni zwycięzcy</h2>
+      </div>
+      {recentWinners.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Brak ostatnich wygranych.</p>
+      ) : (
+        <ol className="space-y-2">
+          {recentWinners.slice(0, 3).map((w, i) => (
+            <li key={`${w.created_at}-${i}`} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
+              <span className="w-6 text-center text-accent font-bold tabular-nums">{i + 1}.</span>
+              <span className="text-lg" aria-hidden="true">{w.prize_icon || "🎁"}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-foreground font-mono text-sm truncate" title="Login częściowo ukryty">
+                  {w.masked_username || maskUsername(null)}
+                </span>
+
+                <span className="block text-muted-foreground text-xs truncate">{w.prize_name}</span>
+              </span>
+              <span className="text-accent font-semibold text-sm tabular-nums shrink-0">+{w.points_won} pkt</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+    </>
   );
 };
+
 
 export default FortuneWheel;
