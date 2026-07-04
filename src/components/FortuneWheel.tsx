@@ -709,7 +709,7 @@ const FortuneWheel = () => {
         )}
 
         <p className="text-muted-foreground text-xs uppercase tracking-widest text-center lg:text-left">
-          Jedno kręcenie co 24h · Nagrody dodawane automatycznie
+          <br />
         </p>
       </div>
     </div>
