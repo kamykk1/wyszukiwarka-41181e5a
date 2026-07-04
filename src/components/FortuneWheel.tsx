@@ -166,6 +166,23 @@ const FortuneWheel = () => {
 
   useEffect(() => { drawWheel(); }, [prizes, rotation, wheelSize]);
 
+  // Auto-unlock the wheel the moment the 24h countdown expires.
+  useEffect(() => {
+    if (!nextAvailableAt || !hasSpunToday) return;
+    const remaining = nextAvailableAt - Date.now();
+    if (remaining <= 0) {
+      setHasSpunToday(false);
+      setNextAvailableAt(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      setHasSpunToday(false);
+      setNextAvailableAt(null);
+    }, remaining + 250);
+    return () => clearTimeout(t);
+  }, [nextAvailableAt, hasSpunToday]);
+
+
   const drawWheel = () => {
     const canvas = canvasRef.current;
     if (!canvas || prizes.length === 0) return;
