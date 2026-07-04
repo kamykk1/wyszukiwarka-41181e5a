@@ -32,23 +32,20 @@ interface SpinHistoryEntry {
 const MAX_WHEEL = 420;
 const MIN_WHEEL = 260;
 
-const useCountdown = () => {
+const useCountdown = (targetMs: number | null) => {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  const midnight = useMemo(() => {
-    const d = new Date();
-    d.setHours(24, 0, 0, 0);
-    return d.getTime();
-  }, [now]);
-  const diff = Math.max(0, midnight - now);
+  if (!targetMs) return "--:--:--";
+  const diff = Math.max(0, targetMs - now);
   const h = Math.floor(diff / 3_600_000);
   const m = Math.floor((diff % 3_600_000) / 60_000);
   const s = Math.floor((diff % 60_000) / 1000);
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 };
+
 
 const useResponsiveWheelSize = (ref: React.RefObject<HTMLDivElement>) => {
   const [size, setSize] = useState(MAX_WHEEL);
