@@ -187,7 +187,7 @@ const FortuneWheel = () => {
   // Auto-unlock the wheel the moment the 24h countdown expires.
   useEffect(() => {
     if (!nextAvailableAt || !hasSpunToday) return;
-    const remaining = nextAvailableAt - Date.now();
+    const remaining = nextAvailableAt - (Date.now() + serverOffsetMs);
     if (remaining <= 0) {
       setHasSpunToday(false);
       setNextAvailableAt(null);
