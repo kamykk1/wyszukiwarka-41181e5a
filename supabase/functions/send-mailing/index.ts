@@ -1,35 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { escapeHtml, sanitizeHtml } from "./sanitize.ts";
 
-// ---------------- HTML sanitization ----------------
-
-// Escape HTML special chars — used for plain-text fields injected into HTML emails
-function escapeHtml(str: string): string {
-  return String(str ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-// Strip <script>, <style>, iframes, on* handlers, and javascript: URLs from admin-provided HTML
-function sanitizeHtml(html: string): string {
-  return String(html ?? "")
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
-    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "")
-    .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, "")
-    .replace(/<embed\b[^>]*>/gi, "")
-    .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
-    .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
-    .replace(/\son\w+\s*=\s*[^\s>]+/gi, "")
-    .replace(/javascript:/gi, "");
-}
-
-// Export for tests
+// Re-export for backwards compatibility (older tests import from index.ts)
 export { escapeHtml, sanitizeHtml };
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
