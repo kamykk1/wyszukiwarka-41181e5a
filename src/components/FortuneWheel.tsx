@@ -227,6 +227,38 @@ const FortuneWheel = () => {
     ctx.restore();
   };
 
+  // Refetch active prizes in the exact same order the RPC uses (ORDER BY id).
+  // Returns the fresh list without mutating state — caller decides when to commit.
+  const refetchPrizes = async (): Promise<Prize[]> => {
+    const { data, error } = await supabase
+      .from("wheel_prizes")
+      .select("id, name, points_reward, color, icon, probability_weight")
+      .eq("is_active", true)
+      .order("id", { ascending: true });
+    if (error) {
+      warn("Resync: failed to refetch prizes:", error);
+      return [];
+    }
+    return (data as Prize[]) || [];
+  };
+
+  // Animate the wheel from its current rotation to `finalRotation`.
+  // Returns a promise that resolves when the animation completes.
+  const animateTo = (finalRotation: number, startRotation: number, duration: number): Promise<void> => {
+    return new Promise((resolve) => {
+      const startTime = Date.now();
+      const step = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 4);
+        setRotation(startRotation + (finalRotation - startRotation) * eased);
+        if (progress < 1) requestAnimationFrame(step);
+        else resolve();
+      };
+      requestAnimationFrame(step);
+    });
+  };
+
   const spin = async () => {
     if (!user) {
       trackEvent("wheel_spin_click", { blocked: "not_logged_in" });
@@ -260,102 +292,134 @@ const FortuneWheel = () => {
 
     type ServerPrize = Prize & { segment_index?: number; total_segments?: number };
     const prize = (data as unknown as { prize: ServerPrize }).prize;
-    const clientIndex = prizes.findIndex((p) => p.id === prize.id);
+
+    // Working copy of the prize list — may be replaced by an auto-resync fetch.
+    let workingPrizes: Prize[] = prizes;
+    let clientIndex = workingPrizes.findIndex((p) => p.id === prize.id);
     const serverIndex = typeof prize.segment_index === "number" ? prize.segment_index : clientIndex;
-    const serverTotal = typeof prize.total_segments === "number" ? prize.total_segments : prizes.length;
+    const serverTotal = typeof prize.total_segments === "number" ? prize.total_segments : workingPrizes.length;
 
-    // ── Diagnostic: client/server segment alignment ──────────────────────────
-    if (clientIndex < 0) {
-      warn("Prize returned by RPC is not in client prize list", { prizeId: prize.id, clientPrizes: prizes.map((p) => p.id) });
-    }
-    if (serverTotal !== prizes.length) {
-      warn(`Segment count mismatch: server=${serverTotal} client=${prizes.length}. Prize list is stale.`);
-      trackEvent("wheel_desync", { reason: "total_mismatch", server_total: serverTotal, client_total: prizes.length });
-    }
-    if (clientIndex !== serverIndex) {
-      warn(`Segment index mismatch: server=${serverIndex} client=${clientIndex} for prize "${prize.name}". Prize order out of sync.`);
-      trackEvent("wheel_desync", { reason: "index_mismatch", server_index: serverIndex, client_index: clientIndex, prize_id: prize.id });
-    }
+    // ── Pre-animation desync detection & auto-resync ─────────────────────────
+    const preDesync =
+      clientIndex < 0 ||
+      serverTotal !== workingPrizes.length ||
+      (workingPrizes[serverIndex]?.id && workingPrizes[serverIndex].id !== prize.id);
 
-    // Always animate to the SERVER-reported segment index — server is source of truth.
-    const spins = 6 + Math.random() * 2;
-    const finalRotation = computeTargetRotation(serverIndex, serverTotal, rotation, spins);
-    log(`Animating to segment ${serverIndex}/${serverTotal} for prize "${prize.name}" (+${prize.points_reward} pkt), final rotation=${finalRotation.toFixed(1)}°`);
-
-    trackEvent("wheel_animation_start", { prize_id: prize.id, prize_name: prize.name, segment_index: serverIndex });
-
-    const duration = 4500;
-    const startTime = Date.now();
-    const startRotation = rotation;
-
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 4);
-      const currentRotation = startRotation + (finalRotation - startRotation) * eased;
-      setRotation(currentRotation);
-
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        setSpinning(false);
-        setHasSpunToday(true);
-
-        // ── Post-animation verification ─────────────────────────────────────
-        const landedIndex = segmentUnderPointer(finalRotation, serverTotal);
-        const landedPrize = prizes[landedIndex];
-        const geometryOk = landedIndex === serverIndex;
-        const pointsOk = !landedPrize || landedPrize.points_reward === prize.points_reward;
-
-        if (!geometryOk) {
-          warn(`Animation ended on segment ${landedIndex} but server said ${serverIndex}. Rendering error.`);
-        }
-        if (!pointsOk) {
-          warn(`Points mismatch: pointer shows "${landedPrize?.name}" (+${landedPrize?.points_reward}) but RPC awarded +${prize.points_reward}.`);
-        }
-
-        if (!geometryOk || !pointsOk) {
-          trackEvent("wheel_verify_fail", {
-            geometry_ok: geometryOk,
-            points_ok: pointsOk,
-            server_index: serverIndex,
-            landed_index: landedIndex,
-            server_points: prize.points_reward,
-            landed_points: landedPrize?.points_reward ?? null,
-          });
-          toast({
-            title: "Niezgodność wyniku",
-            description: `Koło wskazało "${landedPrize?.name ?? "?"}" (+${landedPrize?.points_reward ?? 0} pkt), ale system zapisał "${prize.name}" (+${prize.points_reward} pkt). Odśwież stronę — nagrody mogły zostać zaktualizowane. Punkty przyznane zgodnie z serwerem.`,
-            variant: "destructive",
-          });
-          setStatusMsg(`Uwaga: rozjazd wskazania koła i zapisu (${prize.points_reward} pkt zostały zapisane).`);
-          setWonPrize(prize);
-          if (user) loadHistory(user.id);
-          return;
-        }
-
-        setWonPrize(prize);
-        trackEvent("wheel_spin_result", {
-          prize_id: prize.id,
-          prize_name: prize.name,
-          points: prize.points_reward,
-          segment_index: serverIndex,
-        });
-        log(`✓ Verified: segment ${landedIndex} matches server, +${prize.points_reward} pkt`);
-        const announce = prize.points_reward > 0
-          ? `Wygrana: ${prize.name}. Otrzymujesz ${prize.points_reward} punktów.`
-          : `Wynik: ${prize.name}. Spróbuj jutro.`;
-        setStatusMsg(announce);
-        if (prize.points_reward > 0) {
-          toast({ title: `${prize.icon} ${prize.name}!`, description: `Wygrałeś ${prize.points_reward} punktów!` });
-        } else {
-          toast({ title: `${prize.icon} Pudło`, description: "Spróbuj jutro!" });
-        }
-        if (user) loadHistory(user.id);
+    if (preDesync) {
+      warn("Pre-animation desync detected — auto-resyncing prize list", {
+        prizeId: prize.id, serverIndex, serverTotal, clientTotal: workingPrizes.length, clientIndex,
+      });
+      trackEvent("wheel_auto_resync", {
+        phase: "pre",
+        server_index: serverIndex,
+        server_total: serverTotal,
+        client_total: workingPrizes.length,
+      });
+      setStatusMsg("Synchronizuję nagrody…");
+      const fresh = await refetchPrizes();
+      if (fresh.length > 0) {
+        workingPrizes = fresh;
+        setPrizes(fresh);
+        clientIndex = fresh.findIndex((p) => p.id === prize.id);
+        log(`Resync: fresh list has ${fresh.length} prizes, matching client index = ${clientIndex}`);
       }
-    };
-    requestAnimationFrame(animate);
+    }
+
+    // Server is source of truth; if segment_index is out of range for the fresh
+    // list, fall back to the client index we just recomputed.
+    const effectiveTotal = workingPrizes.length || serverTotal;
+    const effectiveIndex =
+      serverIndex >= 0 && serverIndex < effectiveTotal && workingPrizes[serverIndex]?.id === prize.id
+        ? serverIndex
+        : Math.max(0, clientIndex);
+
+    const spins = 6 + Math.random() * 2;
+    let finalRotation = computeTargetRotation(effectiveIndex, effectiveTotal, rotation, spins);
+    log(`Animating to segment ${effectiveIndex}/${effectiveTotal} for prize "${prize.name}" (+${prize.points_reward} pkt), final rotation=${finalRotation.toFixed(1)}°`);
+    trackEvent("wheel_animation_start", { prize_id: prize.id, prize_name: prize.name, segment_index: effectiveIndex });
+
+    await animateTo(finalRotation, rotation, 4500);
+
+    // ── Post-animation verification ─────────────────────────────────────────
+    let landedIndex = segmentUnderPointer(finalRotation, effectiveTotal);
+    let landedPrize = workingPrizes[landedIndex];
+    let geometryOk = landedPrize?.id === prize.id;
+    let pointsOk = !landedPrize || landedPrize.points_reward === prize.points_reward;
+
+    // Auto-resync: if pointer landed on wrong prize, refetch and re-animate once.
+    if (!geometryOk || !pointsOk) {
+      warn(`Post-animation desync (segment ${landedIndex} shows "${landedPrize?.name}") — refetching & re-animating`);
+      trackEvent("wheel_auto_resync", {
+        phase: "post",
+        landed_index: landedIndex,
+        server_prize_id: prize.id,
+        landed_prize_id: landedPrize?.id ?? null,
+      });
+      setStatusMsg("Synchronizuję wynik…");
+
+      const fresh = await refetchPrizes();
+      if (fresh.length > 0) {
+        workingPrizes = fresh;
+        setPrizes(fresh);
+      }
+      const freshTotal = workingPrizes.length;
+      const freshIndex = workingPrizes.findIndex((p) => p.id === prize.id);
+      if (freshIndex >= 0 && freshTotal > 0) {
+        const retryRotation = computeTargetRotation(freshIndex, freshTotal, finalRotation, 2);
+        log(`Auto-resync: re-animating to segment ${freshIndex}/${freshTotal}`);
+        await animateTo(retryRotation, finalRotation, 2200);
+        finalRotation = retryRotation;
+        landedIndex = segmentUnderPointer(finalRotation, freshTotal);
+        landedPrize = workingPrizes[landedIndex];
+        geometryOk = landedPrize?.id === prize.id;
+        pointsOk = !landedPrize || landedPrize.points_reward === prize.points_reward;
+      }
+    }
+
+    setSpinning(false);
+    setHasSpunToday(true);
+
+    if (!geometryOk || !pointsOk) {
+      warn(`Auto-resync did not resolve desync (final segment ${landedIndex} "${landedPrize?.name}")`);
+      trackEvent("wheel_verify_fail", {
+        geometry_ok: geometryOk,
+        points_ok: pointsOk,
+        server_index: serverIndex,
+        landed_index: landedIndex,
+        server_points: prize.points_reward,
+        landed_points: landedPrize?.points_reward ?? null,
+      });
+      toast({
+        title: "Niezgodność wyniku",
+        description: `Koło wskazało "${landedPrize?.name ?? "?"}" (+${landedPrize?.points_reward ?? 0} pkt), ale system zapisał "${prize.name}" (+${prize.points_reward} pkt). Punkty przyznane zgodnie z serwerem.`,
+        variant: "destructive",
+      });
+      setStatusMsg(`Uwaga: rozjazd wskazania koła i zapisu (${prize.points_reward} pkt zostały zapisane).`);
+      setWonPrize(prize);
+      if (user) loadHistory(user.id);
+      return;
+    }
+
+    setWonPrize(prize);
+    trackEvent("wheel_spin_result", {
+      prize_id: prize.id,
+      prize_name: prize.name,
+      points: prize.points_reward,
+      segment_index: landedIndex,
+    });
+    log(`✓ Verified: segment ${landedIndex} matches server, +${prize.points_reward} pkt`);
+    const announce = prize.points_reward > 0
+      ? `Wygrana: ${prize.name}. Otrzymujesz ${prize.points_reward} punktów.`
+      : `Wynik: ${prize.name}. Spróbuj jutro.`;
+    setStatusMsg(announce);
+    if (prize.points_reward > 0) {
+      toast({ title: `${prize.icon} ${prize.name}!`, description: `Wygrałeś ${prize.points_reward} punktów!` });
+    } else {
+      toast({ title: `${prize.icon} Pudło`, description: "Spróbuj jutro!" });
+    }
+    if (user) loadHistory(user.id);
   };
+
 
   if (loading || prizes.length === 0) {
     return (
