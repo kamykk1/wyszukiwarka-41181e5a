@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -32,23 +32,20 @@ interface SpinHistoryEntry {
 const MAX_WHEEL = 420;
 const MIN_WHEEL = 260;
 
-const useCountdown = () => {
+const useCountdown = (targetMs: number | null) => {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  const midnight = useMemo(() => {
-    const d = new Date();
-    d.setHours(24, 0, 0, 0);
-    return d.getTime();
-  }, [now]);
-  const diff = Math.max(0, midnight - now);
+  if (!targetMs) return "--:--:--";
+  const diff = Math.max(0, targetMs - now);
   const h = Math.floor(diff / 3_600_000);
   const m = Math.floor((diff % 3_600_000) / 60_000);
   const s = Math.floor((diff % 60_000) / 1000);
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 };
+
 
 const useResponsiveWheelSize = (ref: React.RefObject<HTMLDivElement>) => {
   const [size, setSize] = useState(MAX_WHEEL);
@@ -82,11 +79,13 @@ const FortuneWheel = () => {
   const [history, setHistory] = useState<SpinHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusMsg, setStatusMsg] = useState("");
+  const [nextAvailableAt, setNextAvailableAt] = useState<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wheelWrapRef = useRef<HTMLDivElement>(null);
   const spinBtnRef = useRef<HTMLButtonElement>(null);
   const wheelSize = useResponsiveWheelSize(wheelWrapRef);
-  const countdown = useCountdown();
+  const countdown = useCountdown(nextAvailableAt);
+
 
   const loadHistory = useCallback(async (uid: string) => {
     const { data: spins } = await supabase
@@ -139,21 +138,50 @@ const FortuneWheel = () => {
     if (user) {
       trackEvent("wheel_page_view", { authenticated: true });
       (async () => {
-        const today = new Date().toISOString().split("T")[0];
-        const [{ data: spin }, { data: streakRow }] = await Promise.all([
-          supabase.from("wheel_spins").select("id").eq("spin_date", today).eq("user_id", user.id),
+        const [{ data: lastSpin }, { data: streakRow }] = await Promise.all([
+          supabase
+            .from("wheel_spins")
+            .select("created_at")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
           supabase.from("user_streaks").select("current_streak").eq("user_id", user.id).maybeSingle(),
         ]);
-        if (spin && spin.length > 0) setHasSpunToday(true);
+        if (lastSpin?.created_at) {
+          const nextAt = new Date(lastSpin.created_at).getTime() + 24 * 3_600_000;
+          if (nextAt > Date.now()) {
+            setHasSpunToday(true);
+            setNextAvailableAt(nextAt);
+          }
+        }
         if (streakRow?.current_streak) setStreak(streakRow.current_streak);
         loadHistory(user.id);
       })();
+
     } else {
       trackEvent("wheel_page_view", { authenticated: false });
     }
   }, [user, loadHistory]);
 
   useEffect(() => { drawWheel(); }, [prizes, rotation, wheelSize]);
+
+  // Auto-unlock the wheel the moment the 24h countdown expires.
+  useEffect(() => {
+    if (!nextAvailableAt || !hasSpunToday) return;
+    const remaining = nextAvailableAt - Date.now();
+    if (remaining <= 0) {
+      setHasSpunToday(false);
+      setNextAvailableAt(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      setHasSpunToday(false);
+      setNextAvailableAt(null);
+    }, remaining + 250);
+    return () => clearTimeout(t);
+  }, [nextAvailableAt, hasSpunToday]);
+
 
   const drawWheel = () => {
     const canvas = canvasRef.current;
@@ -286,12 +314,20 @@ const FortuneWheel = () => {
       toast({ title: "Błąd", description: msg, variant: "destructive" });
       setSpinning(false);
       setStatusMsg(`Błąd: ${msg}`);
-      if (errCode === "already_spun") setHasSpunToday(true);
+      if (errCode === "already_spun") {
+        setHasSpunToday(true);
+        const nextIso = (data as unknown as { next_available_at?: string })?.next_available_at;
+        if (nextIso) setNextAvailableAt(new Date(nextIso).getTime());
+      }
       return;
     }
 
     type ServerPrize = Prize & { segment_index?: number; total_segments?: number };
     const prize = (data as unknown as { prize: ServerPrize }).prize;
+    const nextIso = (data as unknown as { next_available_at?: string })?.next_available_at;
+    if (nextIso) setNextAvailableAt(new Date(nextIso).getTime());
+    else setNextAvailableAt(Date.now() + 24 * 3_600_000);
+
 
     // Working copy of the prize list — may be replaced by an auto-resync fetch.
     let workingPrizes: Prize[] = prizes;
@@ -574,9 +610,12 @@ const FortuneWheel = () => {
                 </div>
               </div>
               <div>
-                <h3 className="text-foreground font-bold text-lg leading-tight">Już kręcono dzisiaj</h3>
-                <p className="text-muted-foreground mt-1 text-sm sm:text-base">Wróć po północy, aby odebrać kolejny bonus i utrzymać swoją serię!</p>
+                <h3 className="text-foreground font-bold text-lg leading-tight">Już kręcono w ciągu ostatnich 24h</h3>
+                <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+                  Kolejne kręcenie za <span className="font-mono tabular-nums text-foreground">{countdown}</span> — utrzymaj serię!
+                </p>
               </div>
+
             </div>
           </div>
         ) : (
@@ -639,7 +678,7 @@ const FortuneWheel = () => {
         )}
 
         <p className="text-muted-foreground text-xs uppercase tracking-widest text-center lg:text-left">
-          Jedno zakręcenie dziennie · Nagrody dodawane automatycznie
+          Jedno kręcenie co 24h · Nagrody dodawane automatycznie
         </p>
       </div>
     </div>
