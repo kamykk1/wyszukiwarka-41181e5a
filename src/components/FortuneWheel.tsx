@@ -198,7 +198,7 @@ const FortuneWheel = () => {
       setNextAvailableAt(null);
     }, remaining + 250);
     return () => clearTimeout(t);
-  }, [nextAvailableAt, hasSpunToday]);
+  }, [nextAvailableAt, hasSpunToday, serverOffsetMs]);
 
 
   const drawWheel = () => {
