@@ -258,6 +258,47 @@ export type Database = {
           },
         ]
       }
+      mailing_send_audit: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          recipient_email: string | null
+          recipient_user_id: string | null
+          sent_by: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient_email?: string | null
+          recipient_user_id?: string | null
+          sent_by?: string | null
+          status: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient_email?: string | null
+          recipient_user_id?: string | null
+          sent_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailing_send_audit_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "mailing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_log: {
         Row: {
           created_at: string
