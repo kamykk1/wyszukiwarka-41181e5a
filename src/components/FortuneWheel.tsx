@@ -138,15 +138,27 @@ const FortuneWheel = () => {
     if (user) {
       trackEvent("wheel_page_view", { authenticated: true });
       (async () => {
-        const today = new Date().toISOString().split("T")[0];
-        const [{ data: spin }, { data: streakRow }] = await Promise.all([
-          supabase.from("wheel_spins").select("id").eq("spin_date", today).eq("user_id", user.id),
+        const [{ data: lastSpin }, { data: streakRow }] = await Promise.all([
+          supabase
+            .from("wheel_spins")
+            .select("created_at")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
           supabase.from("user_streaks").select("current_streak").eq("user_id", user.id).maybeSingle(),
         ]);
-        if (spin && spin.length > 0) setHasSpunToday(true);
+        if (lastSpin?.created_at) {
+          const nextAt = new Date(lastSpin.created_at).getTime() + 24 * 3_600_000;
+          if (nextAt > Date.now()) {
+            setHasSpunToday(true);
+            setNextAvailableAt(nextAt);
+          }
+        }
         if (streakRow?.current_streak) setStreak(streakRow.current_streak);
         loadHistory(user.id);
       })();
+
     } else {
       trackEvent("wheel_page_view", { authenticated: false });
     }
