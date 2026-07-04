@@ -149,9 +149,10 @@ const FortuneWheel = () => {
 
     // Public leaderboard — top 3 recent winners (usernames masked server-side).
     (async () => {
-      const { data } = await supabase.rpc("get_recent_wheel_winners");
+      const { data } = await (supabase.rpc as any)("get_recent_wheel_winners");
       if (Array.isArray(data)) setRecentWinners(data as typeof recentWinners);
     })();
+
 
     if (user) {
       trackEvent("wheel_page_view", { authenticated: true });
