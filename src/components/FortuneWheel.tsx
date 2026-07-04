@@ -324,6 +324,15 @@ const FortuneWheel = () => {
     const rpcMs = Date.now() - rpcStart;
     log(`RPC spin_wheel returned in ${rpcMs}ms`, { data, error });
 
+    // Sync clock drift: use the midpoint of the RPC round-trip as the client anchor.
+    const serverNowIso = (data as unknown as { server_now?: string })?.server_now;
+    if (serverNowIso) {
+      const clientAnchor = rpcStart + Math.floor(rpcMs / 2);
+      const offset = computeServerOffsetMs(serverNowIso, clientAnchor);
+      setServerOffsetMs(offset);
+      log(`Server clock offset detected: ${offset}ms`);
+    }
+
     if (error || !data || (data as unknown as { error?: string }).error) {
       const errCode = (data as unknown as { error?: string })?.error ?? "rpc_error";
       const msg = (data as unknown as { message?: string })?.message || "Nie udało się zakręcić kołem.";
@@ -335,7 +344,9 @@ const FortuneWheel = () => {
       if (errCode === "already_spun") {
         setHasSpunToday(true);
         const nextIso = (data as unknown as { next_available_at?: string })?.next_available_at;
-        if (nextIso) setNextAvailableAt(new Date(nextIso).getTime());
+        const lastIso = (data as unknown as { last_spin_at?: string })?.last_spin_at;
+        const nextAt = resolveNextAvailableAt(nextIso, lastIso);
+        if (nextAt) setNextAvailableAt(nextAt);
       }
       return;
     }
@@ -343,8 +354,8 @@ const FortuneWheel = () => {
     type ServerPrize = Prize & { segment_index?: number; total_segments?: number };
     const prize = (data as unknown as { prize: ServerPrize }).prize;
     const nextIso = (data as unknown as { next_available_at?: string })?.next_available_at;
-    if (nextIso) setNextAvailableAt(new Date(nextIso).getTime());
-    else setNextAvailableAt(Date.now() + 24 * 3_600_000);
+    setNextAvailableAt(resolveNextAvailableAt(nextIso, null) ?? Date.now() + 24 * 3_600_000);
+
 
 
     // Working copy of the prize list — may be replaced by an auto-resync fetch.
