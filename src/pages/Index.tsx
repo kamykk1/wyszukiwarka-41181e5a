@@ -35,6 +35,12 @@ const Index = () => {
   const [heroHtml, setHeroHtml] = useState<string>(defaultHeroHtml);
 
   useEffect(() => {
+    applySeo({
+      title: "Najlepsze oferty z wynagrodzeniem — NetSzukacz.pl",
+      description:
+        "Najlepsze oferty z wynagrodzeniem: porównuj ceny, konta, kredyty i lokaty, zbieraj punkty i cashback za codzienne zakupy.",
+      canonicalPath: "/",
+    });
     const fetchHero = async () => {
       const { data } = await supabase
         .from("page_settings")
