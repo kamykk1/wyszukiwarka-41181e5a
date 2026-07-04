@@ -7,6 +7,15 @@ import { Loader2, Flame, Clock, Sparkles, Trophy, Gift, History } from "lucide-r
 import { Link } from "react-router-dom";
 import { trackEvent } from "@/lib/analytics";
 import { computeTargetRotation, segmentUnderPointer } from "@/lib/wheelMath";
+import {
+  computeServerOffsetMs,
+  computeUnlockAt,
+  formatRemaining,
+  isUnlocked,
+  maskUsername,
+  resolveNextAvailableAt,
+} from "@/lib/wheelTime";
+
 
 const log = (...args: unknown[]) => console.info("[FortuneWheel]", ...args);
 const warn = (...args: unknown[]) => console.warn("[FortuneWheel]", ...args);
