@@ -1,5 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
+
+// ---------------- HTML sanitization ----------------
 
 // Escape HTML special chars — used for plain-text fields injected into HTML emails
 function escapeHtml(str: string): string {
@@ -25,17 +28,31 @@ function sanitizeHtml(html: string): string {
     .replace(/javascript:/gi, "");
 }
 
+// Export for tests
+export { escapeHtml, sanitizeHtml };
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function sendEmail(to: string, subject: string, html: string) {
+// ---------------- Input validation ----------------
+
+const BodySchema = z.object({
+  campaign_id: z.string().uuid("campaign_id must be a UUID"),
+  subject: z.string().trim().min(1, "subject required").max(300, "subject too long"),
+  message: z.string().max(20000, "message too long").default(""),
+  audience: z.enum(["all", "active", "new"]).default("all"),
+  points_reward: z.number().int().min(0).max(10000).default(0),
+  html_template: z.string().max(100000, "html_template too long").optional(),
+});
+
+async function sendEmail(to: string, subject: string, html: string): Promise<{ ok: boolean; error?: string }> {
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (!resendKey) {
-    console.warn("RESEND_API_KEY not set, skipping email");
-    return;
+    console.warn("[send-mailing] RESEND_API_KEY not set, skipping email");
+    return { ok: false, error: "RESEND_API_KEY not set" };
   }
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -49,8 +66,10 @@ async function sendEmail(to: string, subject: string, html: string) {
   });
   if (!res.ok) {
     const body = await res.text();
-    console.error(`Resend error [${res.status}]: ${body}`);
+    console.error(`[send-mailing] Resend error [${res.status}]: ${body}`);
+    return { ok: false, error: `Resend ${res.status}: ${body.slice(0, 500)}` };
   }
+  return { ok: true };
 }
 
 Deno.serve(async (req) => {
@@ -84,7 +103,49 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const { campaign_id, subject, message, audience, points_reward, html_template } = await req.json();
+
+    // -------- Parse & validate body --------
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch (_e) {
+      console.warn("[send-mailing] invalid JSON body", { userId });
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const parsed = BodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      const fieldErrors = parsed.error.flatten().fieldErrors;
+      console.warn("[send-mailing] validation failed", {
+        userId,
+        fieldErrors,
+        received_keys: rawBody && typeof rawBody === "object" ? Object.keys(rawBody as object) : [],
+      });
+      // Best-effort audit row if we at least have a campaign_id
+      const maybeCampaign =
+        rawBody && typeof rawBody === "object" && "campaign_id" in rawBody
+          ? String((rawBody as Record<string, unknown>).campaign_id ?? "")
+          : "";
+      if (maybeCampaign && /^[0-9a-f-]{36}$/i.test(maybeCampaign)) {
+        await supabase.from("mailing_send_audit").insert({
+          campaign_id: maybeCampaign,
+          status: "validation_error",
+          error_message: JSON.stringify(fieldErrors).slice(0, 2000),
+          sent_by: userId,
+        });
+      }
+      return new Response(
+        JSON.stringify({ error: "Validation failed", details: fieldErrors }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { campaign_id, subject, message, audience, points_reward, html_template } = parsed.data;
+
+    console.log("[send-mailing] starting", { campaign_id, audience, points_reward, sent_by: userId });
 
     // If no custom template provided, fetch from DB
     let template = html_template;
@@ -103,6 +164,7 @@ Deno.serve(async (req) => {
       .eq("email_notifications", true);
 
     if (!profiles || profiles.length === 0) {
+      console.log("[send-mailing] no recipients", { campaign_id });
       return new Response(JSON.stringify({ sent: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -115,10 +177,25 @@ Deno.serve(async (req) => {
     const safeSubject = escapeHtml(subject);
     const safeMessage = sanitizeHtml(String(message ?? "")).replace(/\n/g, "<br/>");
 
+    const auditRows: Array<Record<string, unknown>> = [];
     let sent = 0;
+    let failed = 0;
+    let skipped = 0;
+
     for (const profile of profiles) {
       const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
-      if (!authUser?.user?.email) continue;
+      const email = authUser?.user?.email;
+      if (!email) {
+        skipped++;
+        auditRows.push({
+          campaign_id,
+          recipient_user_id: profile.user_id,
+          recipient_email: null,
+          status: "skipped_no_email",
+          sent_by: userId,
+        });
+        continue;
+      }
 
       const userName = escapeHtml(profile.first_name || profile.name || "");
       const clickButton = points_reward > 0
@@ -132,23 +209,57 @@ Deno.serve(async (req) => {
         .replace(/\{\{message\}\}/g, safeMessage)
         .replace(/\{\{click_button\}\}/g, clickButton);
 
-      await sendEmail(authUser.user.email, subject, finalHtml);
+      const result = await sendEmail(email, subject, finalHtml);
 
-      await supabase.from("notification_log").insert({
-        user_id: profile.user_id,
-        type: "mailing",
-        reference_id: campaign_id,
-      });
+      if (result.ok) {
+        sent++;
+        auditRows.push({
+          campaign_id,
+          recipient_user_id: profile.user_id,
+          recipient_email: email,
+          status: "sent",
+          sent_by: userId,
+        });
 
-      sent++;
+        await supabase.from("notification_log").insert({
+          user_id: profile.user_id,
+          type: "mailing",
+          reference_id: campaign_id,
+        });
+      } else {
+        failed++;
+        auditRows.push({
+          campaign_id,
+          recipient_user_id: profile.user_id,
+          recipient_email: email,
+          status: "failed",
+          error_message: result.error?.slice(0, 2000) ?? "unknown",
+          sent_by: userId,
+        });
+      }
     }
 
+    // Bulk-insert audit rows in chunks
+    if (auditRows.length > 0) {
+      const CHUNK = 500;
+      for (let i = 0; i < auditRows.length; i += CHUNK) {
+        const { error: auditError } = await supabase
+          .from("mailing_send_audit")
+          .insert(auditRows.slice(i, i + CHUNK));
+        if (auditError) {
+          console.error("[send-mailing] audit insert failed", auditError);
+        }
+      }
+    }
+
+    console.log("[send-mailing] done", { campaign_id, sent, failed, skipped, total: profiles.length });
+
     return new Response(
-      JSON.stringify({ success: true, sent }),
+      JSON.stringify({ success: true, sent, failed, skipped }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Mailing error:", error);
+    console.error("[send-mailing] error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
