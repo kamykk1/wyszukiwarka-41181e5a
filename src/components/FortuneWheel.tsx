@@ -730,8 +730,9 @@ const FortuneWheel = () => {
               <span className="text-lg" aria-hidden="true">{w.prize_icon || "🎁"}</span>
               <span className="flex-1 min-w-0">
                 <span className="block text-foreground font-mono text-sm truncate" title="Login częściowo ukryty">
-                  {maskUsername(w.masked_username?.replace(/•+$/, "") || null)}
+                  {w.masked_username || maskUsername(null)}
                 </span>
+
                 <span className="block text-muted-foreground text-xs truncate">{w.prize_name}</span>
               </span>
               <span className="text-accent font-semibold text-sm tabular-nums shrink-0">+{w.points_won} pkt</span>
