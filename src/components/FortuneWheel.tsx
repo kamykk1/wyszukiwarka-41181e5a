@@ -87,11 +87,16 @@ const FortuneWheel = () => {
   const [loading, setLoading] = useState(true);
   const [statusMsg, setStatusMsg] = useState("");
   const [nextAvailableAt, setNextAvailableAt] = useState<number | null>(null);
+  const [serverOffsetMs, setServerOffsetMs] = useState(0);
+  const [recentWinners, setRecentWinners] = useState<
+    { masked_username: string; prize_name: string; prize_icon: string; points_won: number; created_at: string }[]
+  >([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wheelWrapRef = useRef<HTMLDivElement>(null);
   const spinBtnRef = useRef<HTMLButtonElement>(null);
   const wheelSize = useResponsiveWheelSize(wheelWrapRef);
-  const countdown = useCountdown(nextAvailableAt);
+  const countdown = useCountdown(nextAvailableAt, serverOffsetMs);
+
 
 
   const loadHistory = useCallback(async (uid: string) => {
