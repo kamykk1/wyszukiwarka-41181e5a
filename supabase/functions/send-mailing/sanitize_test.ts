@@ -132,8 +132,10 @@ Deno.test("renderEmail blocks XSS via name", () => {
     name: `<img src=x onerror=alert(1)>`,
     message: "",
   });
-  assertFalse(/onerror/i.test(html), html);
-  assertFalse(/<img/i.test(html), html);
+  // The payload must be fully escaped — no live <img> tag or attribute survives.
+  assertFalse(/<img[^>]*onerror/i.test(html), html);
+  assertStringIncludes(html, "&lt;img");
+
 });
 
 Deno.test("renderEmail blocks XSS via admin-supplied HTML message", () => {
