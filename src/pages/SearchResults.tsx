@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useOfferSearch, type SortKey } from "@/hooks/useOfferSearch";
 import { OfferCard } from "@/components/search/OfferCard";
 import { PartnerStatusBar } from "@/components/search/PartnerStatusBar";
+import { applySeo } from "@/lib/seo";
 
 interface TDProgram {
   id: string;
