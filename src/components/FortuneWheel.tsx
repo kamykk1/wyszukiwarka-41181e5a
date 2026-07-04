@@ -713,7 +713,36 @@ const FortuneWheel = () => {
         </p>
       </div>
     </div>
+
+    {/* Ranking: 3 ostatnich zwycięzców (loginy zamaskowane) */}
+    <section aria-label="Ostatni zwycięzcy" className="mt-8 sm:mt-10 bg-card/60 border border-border rounded-2xl p-4 sm:p-6 max-w-2xl mx-auto">
+      <div className="flex items-center gap-2 mb-4">
+        <Trophy className="h-4 w-4 text-accent" aria-hidden="true" />
+        <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Ostatni zwycięzcy</h2>
+      </div>
+      {recentWinners.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Brak ostatnich wygranych.</p>
+      ) : (
+        <ol className="space-y-2">
+          {recentWinners.slice(0, 3).map((w, i) => (
+            <li key={`${w.created_at}-${i}`} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
+              <span className="w-6 text-center text-accent font-bold tabular-nums">{i + 1}.</span>
+              <span className="text-lg" aria-hidden="true">{w.prize_icon || "🎁"}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-foreground font-mono text-sm truncate" title="Login częściowo ukryty">
+                  {maskUsername(w.masked_username?.replace(/•+$/, "") || null)}
+                </span>
+                <span className="block text-muted-foreground text-xs truncate">{w.prize_name}</span>
+              </span>
+              <span className="text-accent font-semibold text-sm tabular-nums shrink-0">+{w.points_won} pkt</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+    </>
   );
 };
+
 
 export default FortuneWheel;
