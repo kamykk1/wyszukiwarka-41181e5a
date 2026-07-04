@@ -14,7 +14,7 @@ import {
   assertFalse,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
-import { escapeHtml, sanitizeHtml } from "./index.ts";
+import { escapeHtml, sanitizeHtml } from "./sanitize.ts";
 
 // ---------------- escapeHtml ----------------
 
