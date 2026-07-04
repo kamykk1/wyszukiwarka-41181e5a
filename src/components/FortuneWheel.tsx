@@ -643,7 +643,7 @@ const FortuneWheel = () => {
               <div>
                 <h3 className="text-foreground font-bold text-lg leading-tight">Już kręcono w ciągu ostatnich 24h</h3>
                 <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                  Kolejne kręcenie za <span className="font-mono tabular-nums text-foreground">{countdown}</span> — utrzymaj serię!
+                  Kolejne kręcenie za <span className="font-mono tabular-nums text-foreground">{countdown}</span>&nbsp;- utrzymaj dobrą passę!
                 </p>
               </div>
 
