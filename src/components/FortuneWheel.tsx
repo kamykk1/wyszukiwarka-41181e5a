@@ -580,7 +580,7 @@ const FortuneWheel = () => {
       <div className="space-y-6">
         <div className="space-y-2">
           <h1 className="text-accent font-extrabold text-3xl sm:text-4xl tracking-tight">Koło Fortuny</h1>
-          <p className="text-muted-foreground text-base sm:text-lg">Twoja codzienna szansa na wyjątkowe nagrody.</p>
+          <p className="text-muted-foreground text-base sm:text-lg whitespace-pre-line">Raz na 24 godziny możesz zakręcić kołem.{"\n"}Nagrody są dodawane automatycznie.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -643,7 +643,7 @@ const FortuneWheel = () => {
               <div>
                 <h3 className="text-foreground font-bold text-lg leading-tight">Już kręcono w ciągu ostatnich 24h</h3>
                 <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                  Kolejne kręcenie za <span className="font-mono tabular-nums text-foreground">{countdown}</span> — utrzymaj serię!
+                  Kolejne kręcenie za <span className="font-mono tabular-nums text-foreground">{countdown}</span>&nbsp;- utrzymaj dobrą passę!
                 </p>
               </div>
 
