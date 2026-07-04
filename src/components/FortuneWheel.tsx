@@ -79,11 +79,13 @@ const FortuneWheel = () => {
   const [history, setHistory] = useState<SpinHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusMsg, setStatusMsg] = useState("");
+  const [nextAvailableAt, setNextAvailableAt] = useState<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wheelWrapRef = useRef<HTMLDivElement>(null);
   const spinBtnRef = useRef<HTMLButtonElement>(null);
   const wheelSize = useResponsiveWheelSize(wheelWrapRef);
-  const countdown = useCountdown();
+  const countdown = useCountdown(nextAvailableAt);
+
 
   const loadHistory = useCallback(async (uid: string) => {
     const { data: spins } = await supabase
