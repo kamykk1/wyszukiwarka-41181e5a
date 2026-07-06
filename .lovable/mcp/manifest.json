@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "netszukacz-mcp",
+      "version": "0.1.0",
+      "title": "netszukacz.pl MCP"
+    },
+    "tools": [
+      {
+        "name": "search_offers",
+        "title": "Wyszukaj oferty",
+        "description": "Szuka najlepszych ofert produktowych z wynagrodzeniem (cashback) u partnerów zintegrowanych z netszukacz.pl. Zwraca listę ujednoliconą i posortowaną po cenie efektywnej.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100,
+              "description": "Fraza wyszukiwania, np. 'iPhone 15'."
+            },
+            "limit": {
+              "description": "Maksymalna liczba wyników (domyślnie 20).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "sort": {
+              "description": "Kolejność sortowania. Domyślnie 'price_effective' (najniższa cena po cashbacku).",
+              "type": "string",
+              "enum": [
+                "price_effective",
+                "price",
+                "cashback",
+                "rating"
+              ]
+            }
+          },
+          "required": [
+            "query"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_rewards",
+        "title": "Lista nagród",
+        "description": "Zwraca listę nagród dostępnych do wymiany za punkty w programie lojalnościowym netszukacz.pl.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "description": "Maksymalna liczba nagród (domyślnie 25).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
