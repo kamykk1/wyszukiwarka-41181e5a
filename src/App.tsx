@@ -27,6 +27,7 @@ import Lokaty from "./pages/Lokaty";
 import Install from "./pages/Install";
 import Levels from "./pages/Levels";
 import NotFound from "./pages/NotFound";
+import OAuthConsent from "./pages/OAuthConsent";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const App = () => (
             <Route path="/lokaty" element={<Lokaty />} />
             <Route path="/zainstaluj" element={<Install />} />
             <Route path="/poziomy" element={<Levels />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

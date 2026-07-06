@@ -3,12 +3,16 @@
   "sdk_version": "0.20.0",
   "path": "/functions/v1/mcp",
   "auth": {
-    "type": "none"
+    "type": "oauth",
+    "issuer": "https://rsfieaipypagioylevbp.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
   },
   "mcp": {
     "server": {
       "name": "netszukacz-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "netszukacz.pl MCP"
     },
     "tools": [
@@ -57,7 +61,83 @@
       {
         "name": "list_rewards",
         "title": "Lista nagród",
-        "description": "Zwraca listę nagród dostępnych do wymiany za punkty w programie lojalnościowym netszukacz.pl.",
+        "description": "Zwraca aktywne nagrody dostępne do wymiany za punkty. Obsługuje wyszukiwanie tekstowe, filtr dostępności, zakres kosztu w punktach, sortowanie i stronicowanie (limit + offset).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "search": {
+              "description": "Fraza filtrująca po nazwie nagrody (ILIKE).",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in_stock_only": {
+              "description": "Jeśli true – zwraca wyłącznie nagrody z dostępnym stanem magazynowym (stock > 0 lub NULL = nielimitowane).",
+              "type": "boolean"
+            },
+            "min_points": {
+              "description": "Minimalny koszt w punktach.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "max_points": {
+              "description": "Maksymalny koszt w punktach.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "sort": {
+              "description": "Kolejność sortowania (domyślnie 'points_asc').",
+              "type": "string",
+              "enum": [
+                "points_asc",
+                "points_desc",
+                "newest"
+              ]
+            },
+            "limit": {
+              "description": "Rozmiar strony (domyślnie 25, max 100).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "offset": {
+              "description": "Przesunięcie strony (domyślnie 0).",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "my_points",
+        "title": "Moje punkty",
+        "description": "Zwraca saldo punktów zalogowanego użytkownika (balance), sumę zdobytych punktów (total_earned), aktualną serię dni aktywności oraz kilka ostatnich transakcji punktowych.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "my_favorites",
+        "title": "Moje ulubione oferty",
+        "description": "Zwraca listę produktów dodanych do ulubionych przez zalogowanego użytkownika, z sortowaniem po dacie dodania oraz stronicowaniem.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -68,10 +148,64 @@
           "type": "object",
           "properties": {
             "limit": {
-              "description": "Maksymalna liczba nagród (domyślnie 25).",
+              "description": "Rozmiar strony (domyślnie 25).",
               "type": "integer",
               "minimum": 1,
               "maximum": 100
+            },
+            "offset": {
+              "description": "Przesunięcie strony (domyślnie 0).",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "sort": {
+              "description": "Kolejność (domyślnie 'newest').",
+              "type": "string",
+              "enum": [
+                "newest",
+                "oldest"
+              ]
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "my_redemptions",
+        "title": "Moja historia wymian nagród",
+        "description": "Zwraca historię wymian nagród zalogowanego użytkownika (koszt punktowy, status, data). Wspiera stronicowanie i filtr statusu.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Opcjonalny filtr statusu wymiany.",
+              "type": "string",
+              "enum": [
+                "pending",
+                "processing",
+                "shipped",
+                "completed",
+                "cancelled"
+              ]
+            },
+            "limit": {
+              "description": "Rozmiar strony (domyślnie 25).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "offset": {
+              "description": "Przesunięcie strony (domyślnie 0).",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
             }
           }
         },
