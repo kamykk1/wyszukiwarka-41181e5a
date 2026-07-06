@@ -3,7 +3,7 @@
 // supabase function: mcp
 // Bundled from src/lib/mcp/index.ts by @lovable.dev/mcp-js.
 // src/lib/mcp/index.ts
-import { defineMcp } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { defineMcp, auth } from "npm:@lovable.dev/mcp-js@0.20.0";
 
 // src/lib/mcp/tools/search-offers.ts
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.20.0";
@@ -19,8 +19,8 @@ var search_offers_default = defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   handler: async ({ query, limit, sort }) => {
-    const projectRef = globalThis.process?.env?.VITE_SUPABASE_PROJECT_ID || "rsfieaipypagioylevbp";
-    const url = `https://${projectRef}.supabase.co/functions/v1/search-offers`;
+    const projectRef2 = globalThis.process?.env?.VITE_SUPABASE_PROJECT_ID || "rsfieaipypagioylevbp";
+    const url = `https://${projectRef2}.supabase.co/functions/v1/search-offers`;
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -65,44 +65,213 @@ import { z as z2 } from "npm:zod@^4.4.3";
 var list_rewards_default = defineTool2({
   name: "list_rewards",
   title: "Lista nagr\xF3d",
-  description: "Zwraca list\u0119 nagr\xF3d dost\u0119pnych do wymiany za punkty w programie lojalno\u015Bciowym netszukacz.pl.",
+  description: "Zwraca aktywne nagrody dost\u0119pne do wymiany za punkty. Obs\u0142uguje wyszukiwanie tekstowe, filtr dost\u0119pno\u015Bci, zakres kosztu w punktach, sortowanie i stronicowanie (limit + offset).",
   inputSchema: {
-    limit: z2.number().int().min(1).max(100).optional().describe("Maksymalna liczba nagr\xF3d (domy\u015Blnie 25).")
+    search: z2.string().trim().min(1).max(100).optional().describe("Fraza filtruj\u0105ca po nazwie nagrody (ILIKE)."),
+    in_stock_only: z2.boolean().optional().describe("Je\u015Bli true \u2013 zwraca wy\u0142\u0105cznie nagrody z dost\u0119pnym stanem magazynowym (stock > 0 lub NULL = nielimitowane)."),
+    min_points: z2.number().int().min(0).optional().describe("Minimalny koszt w punktach."),
+    max_points: z2.number().int().min(1).optional().describe("Maksymalny koszt w punktach."),
+    sort: z2.enum(["points_asc", "points_desc", "newest"]).optional().describe("Kolejno\u015B\u0107 sortowania (domy\u015Blnie 'points_asc')."),
+    limit: z2.number().int().min(1).max(100).optional().describe("Rozmiar strony (domy\u015Blnie 25, max 100)."),
+    offset: z2.number().int().min(0).optional().describe("Przesuni\u0119cie strony (domy\u015Blnie 0).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ limit }) => {
+  handler: async (args, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Wymagane zalogowanie (OAuth)." }], isError: true };
+    }
+    const {
+      search,
+      in_stock_only,
+      min_points,
+      max_points,
+      sort = "points_asc",
+      limit = 25,
+      offset = 0
+    } = args;
     const env = globalThis.process?.env ?? {};
-    const url = env.SUPABASE_URL || "https://rsfieaipypagioylevbp.supabase.co";
-    const key = env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzZmllYWlweXBhZ2lveWxldmJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NjY4NzMsImV4cCI6MjA4NjI0Mjg3M30.jSWFy1LoKw1hSBnsNQaLx_ud-rYyV0Frc1R3mCV--OA";
+    const url = env.SUPABASE_URL;
+    const key = env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY;
     const supabase = createClient(url, key, {
+      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
       auth: { persistSession: false, autoRefreshToken: false }
     });
-    const { data, error } = await supabase.from("rewards").select("id, name, description, points_cost, stock, image_url, category").eq("active", true).order("points_cost", { ascending: true }).limit(limit ?? 25);
+    let q = supabase.from("rewards").select("id, name, description, points_cost, stock, image_url, created_at", { count: "exact" }).eq("is_active", true);
+    if (search) q = q.ilike("name", `%${search}%`);
+    if (typeof min_points === "number") q = q.gte("points_cost", min_points);
+    if (typeof max_points === "number") q = q.lte("points_cost", max_points);
+    if (in_stock_only) q = q.or("stock.is.null,stock.gt.0");
+    if (sort === "points_desc") q = q.order("points_cost", { ascending: false });
+    else if (sort === "newest") q = q.order("created_at", { ascending: false });
+    else q = q.order("points_cost", { ascending: true });
+    q = q.range(offset, offset + limit - 1);
+    const { data, error, count } = await q;
     if (error) {
-      return {
-        content: [{ type: "text", text: `B\u0142\u0105d pobierania nagr\xF3d: ${error.message}` }],
-        isError: true
-      };
+      return { content: [{ type: "text", text: `B\u0142\u0105d: ${error.message}` }], isError: true };
     }
+    const total = count ?? 0;
     return {
-      content: [
-        {
-          type: "text",
-          text: `Dost\u0119pnych nagr\xF3d: ${data?.length ?? 0}.`
-        }
-      ],
-      structuredContent: { count: data?.length ?? 0, rewards: data ?? [] }
+      content: [{
+        type: "text",
+        text: `Zwr\xF3cono ${data?.length ?? 0} z ${total} nagr\xF3d (offset=${offset}, limit=${limit}).`
+      }],
+      structuredContent: {
+        total,
+        offset,
+        limit,
+        has_more: offset + (data?.length ?? 0) < total,
+        rewards: data ?? []
+      }
+    };
+  }
+});
+
+// src/lib/mcp/tools/my-points.ts
+import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.95.3";
+function userClient(ctx) {
+  const env = globalThis.process?.env ?? {};
+  return createClient2(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+var my_points_default = defineTool3({
+  name: "my_points",
+  title: "Moje punkty",
+  description: "Zwraca saldo punkt\xF3w zalogowanego u\u017Cytkownika (balance), sum\u0119 zdobytych punkt\xF3w (total_earned), aktualn\u0105 seri\u0119 dni aktywno\u015Bci oraz kilka ostatnich transakcji punktowych.",
+  inputSchema: {},
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (_args, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Wymagane zalogowanie (OAuth)." }], isError: true };
+    }
+    const supabase = userClient(ctx);
+    const [pointsRes, streakRes, txRes] = await Promise.all([
+      supabase.from("user_points").select("balance, total_earned, updated_at").eq("user_id", ctx.getUserId()).maybeSingle(),
+      supabase.from("user_streaks").select("current_streak, longest_streak, last_activity_date").eq("user_id", ctx.getUserId()).maybeSingle(),
+      supabase.from("points_transactions").select("amount, type, description, created_at").eq("user_id", ctx.getUserId()).order("created_at", { ascending: false }).limit(10)
+    ]);
+    if (pointsRes.error) return { content: [{ type: "text", text: pointsRes.error.message }], isError: true };
+    const points = pointsRes.data ?? { balance: 0, total_earned: 0 };
+    return {
+      content: [{ type: "text", text: `Saldo: ${points.balance ?? 0} pkt \xB7 zdobyte \u0142\u0105cznie: ${points.total_earned ?? 0} pkt.` }],
+      structuredContent: {
+        user_id: ctx.getUserId(),
+        points,
+        streak: streakRes.data ?? null,
+        recent_transactions: txRes.data ?? []
+      }
+    };
+  }
+});
+
+// src/lib/mcp/tools/my-favorites.ts
+import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.95.3";
+import { z as z3 } from "npm:zod@^4.4.3";
+function userClient2(ctx) {
+  const env = globalThis.process?.env ?? {};
+  return createClient3(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+var my_favorites_default = defineTool4({
+  name: "my_favorites",
+  title: "Moje ulubione oferty",
+  description: "Zwraca list\u0119 produkt\xF3w dodanych do ulubionych przez zalogowanego u\u017Cytkownika, z sortowaniem po dacie dodania oraz stronicowaniem.",
+  inputSchema: {
+    limit: z3.number().int().min(1).max(100).optional().describe("Rozmiar strony (domy\u015Blnie 25)."),
+    offset: z3.number().int().min(0).optional().describe("Przesuni\u0119cie strony (domy\u015Blnie 0)."),
+    sort: z3.enum(["newest", "oldest"]).optional().describe("Kolejno\u015B\u0107 (domy\u015Blnie 'newest').")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ limit = 25, offset = 0, sort = "newest" }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Wymagane zalogowanie (OAuth)." }], isError: true };
+    }
+    const supabase = userClient2(ctx);
+    const { data, error, count } = await supabase.from("favorites").select("id, product_name, created_at", { count: "exact" }).eq("user_id", ctx.getUserId()).order("created_at", { ascending: sort === "oldest" }).range(offset, offset + limit - 1);
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    const total = count ?? 0;
+    return {
+      content: [{ type: "text", text: `Ulubione: ${data?.length ?? 0} z ${total}.` }],
+      structuredContent: {
+        total,
+        offset,
+        limit,
+        has_more: offset + (data?.length ?? 0) < total,
+        favorites: data ?? []
+      }
+    };
+  }
+});
+
+// src/lib/mcp/tools/my-redemptions.ts
+import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { createClient as createClient4 } from "npm:@supabase/supabase-js@^2.95.3";
+import { z as z4 } from "npm:zod@^4.4.3";
+function userClient3(ctx) {
+  const env = globalThis.process?.env ?? {};
+  return createClient4(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+var my_redemptions_default = defineTool5({
+  name: "my_redemptions",
+  title: "Moja historia wymian nagr\xF3d",
+  description: "Zwraca histori\u0119 wymian nagr\xF3d zalogowanego u\u017Cytkownika (koszt punktowy, status, data). Wspiera stronicowanie i filtr statusu.",
+  inputSchema: {
+    status: z4.enum(["pending", "processing", "shipped", "completed", "cancelled"]).optional().describe("Opcjonalny filtr statusu wymiany."),
+    limit: z4.number().int().min(1).max(100).optional().describe("Rozmiar strony (domy\u015Blnie 25)."),
+    offset: z4.number().int().min(0).optional().describe("Przesuni\u0119cie strony (domy\u015Blnie 0).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ status, limit = 25, offset = 0 }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Wymagane zalogowanie (OAuth)." }], isError: true };
+    }
+    const supabase = userClient3(ctx);
+    let q = supabase.from("reward_redemptions").select("id, points_spent, status, created_at, reward:rewards(id, name, points_cost, image_url)", { count: "exact" }).eq("user_id", ctx.getUserId()).order("created_at", { ascending: false });
+    if (status) q = q.eq("status", status);
+    q = q.range(offset, offset + limit - 1);
+    const { data, error, count } = await q;
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    const total = count ?? 0;
+    const totalSpent = (data ?? []).reduce((sum, r) => sum + (r.points_spent ?? 0), 0);
+    return {
+      content: [{ type: "text", text: `Wymian: ${data?.length ?? 0} z ${total} (widoczne = ${totalSpent} pkt).` }],
+      structuredContent: {
+        total,
+        offset,
+        limit,
+        has_more: offset + (data?.length ?? 0) < total,
+        redemptions: data ?? []
+      }
     };
   }
 });
 
 // src/lib/mcp/index.ts
+var projectRef = "rsfieaipypagioylevbp";
 var mcp_default = defineMcp({
   name: "netszukacz-mcp",
   title: "netszukacz.pl MCP",
-  version: "0.1.0",
-  instructions: "Narz\u0119dzia netszukacz.pl \u2013 por\xF3wnywarki ofert z wynagrodzeniem (cashback). U\u017Cyj `search_offers`, aby znale\u017A\u0107 najlepsze oferty produktowe z partner\xF3w (Allegro, AliExpress, Amazon, Temu) posortowane po cenie efektywnej. U\u017Cyj `list_rewards`, aby pobra\u0107 list\u0119 nagr\xF3d dost\u0119pnych w programie lojalno\u015Bciowym.",
-  tools: [search_offers_default, list_rewards_default]
+  version: "0.2.0",
+  instructions: "Narz\u0119dzia netszukacz.pl \u2013 por\xF3wnywarki ofert z wynagrodzeniem (cashback) i programu lojalno\u015Bciowego. Wszystkie wywo\u0142ania wymagaj\u0105 zalogowania przez OAuth (Supabase Auth). Publiczne: `search_offers` (wyszukiwanie ofert), `list_rewards` (katalog nagr\xF3d). Prywatne (na zalogowanym u\u017Cytkowniku): `my_points`, `my_favorites`, `my_redemptions`.",
+  auth: auth.oauth.issuer({
+    issuer: `https://${projectRef}.supabase.co/auth/v1`,
+    acceptedAudiences: "authenticated"
+  }),
+  tools: [
+    search_offers_default,
+    list_rewards_default,
+    my_points_default,
+    my_favorites_default,
+    my_redemptions_default
+  ]
 });
 
 // lovable-mcp-supabase-entry.ts

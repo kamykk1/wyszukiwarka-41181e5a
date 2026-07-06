@@ -3,52 +3,94 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 /**
- * Publiczna lista nagród dostępnych w programie lojalnościowym
- * netszukacz.pl (do wymiany za punkty).
+ * Lista nagród w programie lojalnościowym netszukacz.pl.
+ * Wspiera wyszukiwanie po nazwie, zakres punktów, filtr dostępności
+ * (stan magazynowy) oraz stronicowanie (limit + offset)
+ * z sortowaniem rosnąco/malejąco po cenie lub dacie utworzenia.
  */
 export default defineTool({
   name: "list_rewards",
   title: "Lista nagród",
   description:
-    "Zwraca listę nagród dostępnych do wymiany za punkty w programie lojalnościowym netszukacz.pl.",
+    "Zwraca aktywne nagrody dostępne do wymiany za punkty. Obsługuje wyszukiwanie tekstowe, filtr dostępności, zakres kosztu w punktach, sortowanie i stronicowanie (limit + offset).",
   inputSchema: {
-    limit: z.number().int().min(1).max(100).optional().describe("Maksymalna liczba nagród (domyślnie 25)."),
+    search: z
+      .string()
+      .trim()
+      .min(1)
+      .max(100)
+      .optional()
+      .describe("Fraza filtrująca po nazwie nagrody (ILIKE)."),
+    in_stock_only: z
+      .boolean()
+      .optional()
+      .describe("Jeśli true – zwraca wyłącznie nagrody z dostępnym stanem magazynowym (stock > 0 lub NULL = nielimitowane)."),
+    min_points: z.number().int().min(0).optional().describe("Minimalny koszt w punktach."),
+    max_points: z.number().int().min(1).optional().describe("Maksymalny koszt w punktach."),
+    sort: z
+      .enum(["points_asc", "points_desc", "newest"])
+      .optional()
+      .describe("Kolejność sortowania (domyślnie 'points_asc')."),
+    limit: z.number().int().min(1).max(100).optional().describe("Rozmiar strony (domyślnie 25, max 100)."),
+    offset: z.number().int().min(0).optional().describe("Przesunięcie strony (domyślnie 0)."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ limit }) => {
-    const env = (globalThis as any).process?.env ?? {};
-    const url = env.SUPABASE_URL || "https://rsfieaipypagioylevbp.supabase.co";
-    const key =
-      env.SUPABASE_PUBLISHABLE_KEY ||
-      env.SUPABASE_ANON_KEY ||
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzZmllYWlweXBhZ2lveWxldmJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NjY4NzMsImV4cCI6MjA4NjI0Mjg3M30.jSWFy1LoKw1hSBnsNQaLx_ud-rYyV0Frc1R3mCV--OA";
+  handler: async (args, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Wymagane zalogowanie (OAuth)." }], isError: true };
+    }
+    const {
+      search,
+      in_stock_only,
+      min_points,
+      max_points,
+      sort = "points_asc",
+      limit = 25,
+      offset = 0,
+    } = args;
 
+    const env = (globalThis as any).process?.env ?? {};
+    const url = env.SUPABASE_URL!;
+    const key = env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY!;
     const supabase = createClient(url, key, {
+      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const { data, error } = await supabase
+    let q = supabase
       .from("rewards")
-      .select("id, name, description, points_cost, stock, image_url, category")
-      .eq("active", true)
-      .order("points_cost", { ascending: true })
-      .limit(limit ?? 25);
+      .select("id, name, description, points_cost, stock, image_url, created_at", { count: "exact" })
+      .eq("is_active", true);
 
+    if (search) q = q.ilike("name", `%${search}%`);
+    if (typeof min_points === "number") q = q.gte("points_cost", min_points);
+    if (typeof max_points === "number") q = q.lte("points_cost", max_points);
+    if (in_stock_only) q = q.or("stock.is.null,stock.gt.0");
+
+    if (sort === "points_desc") q = q.order("points_cost", { ascending: false });
+    else if (sort === "newest") q = q.order("created_at", { ascending: false });
+    else q = q.order("points_cost", { ascending: true });
+
+    q = q.range(offset, offset + limit - 1);
+
+    const { data, error, count } = await q;
     if (error) {
-      return {
-        content: [{ type: "text", text: `Błąd pobierania nagród: ${error.message}` }],
-        isError: true,
-      };
+      return { content: [{ type: "text", text: `Błąd: ${error.message}` }], isError: true };
     }
 
+    const total = count ?? 0;
     return {
-      content: [
-        {
-          type: "text",
-          text: `Dostępnych nagród: ${data?.length ?? 0}.`,
-        },
-      ],
-      structuredContent: { count: data?.length ?? 0, rewards: data ?? [] },
+      content: [{
+        type: "text",
+        text: `Zwrócono ${data?.length ?? 0} z ${total} nagród (offset=${offset}, limit=${limit}).`,
+      }],
+      structuredContent: {
+        total,
+        offset,
+        limit,
+        has_more: offset + (data?.length ?? 0) < total,
+        rewards: data ?? [],
+      },
     };
   },
 });
