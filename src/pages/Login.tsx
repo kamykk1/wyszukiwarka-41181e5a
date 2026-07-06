@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { LogIn, Lock, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,10 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const nextParam = searchParams.get("next");
+  const safeNext = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : null;
+  const registerHref = safeNext ? `/register?next=${encodeURIComponent(safeNext)}` : "/register";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +44,8 @@ const Login = () => {
       toast.error("Błąd logowania", { description: error.message });
     } else {
       toast.success("Zalogowano pomyślnie!");
-      navigate("/");
+      if (safeNext) window.location.href = safeNext;
+      else navigate("/");
     }
   };
 
@@ -86,7 +91,7 @@ const Login = () => {
             </p>
             <p className="mt-2 text-center text-sm text-muted-foreground">
               Nie masz konta?{" "}
-              <Link to="/register" className="font-medium text-accent hover:underline">
+              <Link to={registerHref} className="font-medium text-accent hover:underline">
                 Zarejestruj się
               </Link>
             </p>
