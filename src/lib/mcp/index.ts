@@ -1,8 +1,11 @@
 import { defineMcp, auth } from "@lovable.dev/mcp-js";
 import searchOffersTool from "./tools/search-offers";
 import listRewardsTool from "./tools/list-rewards";
+import rewardDetailsTool from "./tools/reward-details";
 import myPointsTool from "./tools/my-points";
 import myFavoritesTool from "./tools/my-favorites";
+import addFavoriteTool from "./tools/add-favorite";
+import removeFavoriteTool from "./tools/remove-favorite";
 import myRedemptionsTool from "./tools/my-redemptions";
 
 // Wydawca (issuer) OAuth = bezpośredni host Supabase (nie proxy .lovable.cloud).
