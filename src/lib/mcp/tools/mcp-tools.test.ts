@@ -52,9 +52,13 @@ function makeQuery(table: string, opts?: { deleteCount?: boolean }) {
     },
     insert: (row: Row | Row[]) => {
       mode = "insert";
-      inserted = Array.isArray(row) ? row : [row];
+      inserted = (Array.isArray(row) ? row : [row]).map((r) => ({
+        id: r.id ?? `id-${Math.random().toString(36).slice(2, 8)}`,
+        created_at: r.created_at ?? new Date().toISOString(),
+        ...r,
+      }));
       state.lastInsert = inserted[0];
-      // Chainable, but also awaitable to resolve as insert
+      (state as any)[table].push(...inserted);
       const p: any = Promise.resolve({ data: inserted, error: null });
       p.select = thenable.select;
       return p;
