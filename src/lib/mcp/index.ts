@@ -16,12 +16,11 @@ const projectRef =
 export default defineMcp({
   name: "netszukacz-mcp",
   title: "netszukacz.pl MCP",
-  version: "0.2.0",
+  version: "0.3.0",
   instructions:
     "Narzędzia netszukacz.pl – porównywarki ofert z wynagrodzeniem (cashback) i programu lojalnościowego. " +
-    "Wszystkie wywołania wymagają zalogowania przez OAuth (Supabase Auth). " +
-    "Publiczne: `search_offers` (wyszukiwanie ofert), `list_rewards` (katalog nagród). " +
-    "Prywatne (na zalogowanym użytkowniku): `my_points`, `my_favorites`, `my_redemptions`.",
+    "Publiczne: `search_offers`, `list_rewards`, `reward_details`. " +
+    "Prywatne (wymagają OAuth): `my_points`, `my_favorites`, `add_favorite`, `remove_favorite`, `my_redemptions`.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
@@ -29,8 +28,11 @@ export default defineMcp({
   tools: [
     searchOffersTool,
     listRewardsTool,
+    rewardDetailsTool,
     myPointsTool,
     myFavoritesTool,
+    addFavoriteTool,
+    removeFavoriteTool,
     myRedemptionsTool,
   ],
 });

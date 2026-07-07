@@ -126,9 +126,10 @@ var list_rewards_default = defineTool2({
   }
 });
 
-// src/lib/mcp/tools/my-points.ts
+// src/lib/mcp/tools/reward-details.ts
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.95.3";
+import { z as z3 } from "npm:zod@^4.4.3";
 function userClient(ctx) {
   const env = globalThis.process?.env ?? {};
   return createClient2(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY, {
@@ -136,7 +137,84 @@ function userClient(ctx) {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 }
-var my_points_default = defineTool3({
+var reward_details_default = defineTool3({
+  name: "reward_details",
+  title: "Szczeg\xF3\u0142y nagrody",
+  description: "Zwraca szczeg\xF3\u0142y pojedynczej nagrody po `reward_id`: opis, koszt w punktach, dost\u0119pno\u015B\u0107 (stock, is_active), globalne ustawienia programu lojalno\u015Bciowego oraz \u2014 je\u015Bli u\u017Cytkownik jest zalogowany \u2014 jego saldo punkt\xF3w i informacj\u0119, czy sta\u0107 go na wymian\u0119. Zwraca czytelny b\u0142\u0105d, gdy nagroda nie istnieje lub jest nieaktywna.",
+  inputSchema: {
+    reward_id: z3.string().uuid().describe("UUID nagrody w tabeli `rewards`.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ reward_id }, ctx) => {
+    const env = globalThis.process?.env ?? {};
+    const supabase = ctx.isAuthenticated() ? userClient(ctx) : createClient2(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+    const { data: reward, error } = await supabase.from("rewards").select("id, name, description, points_cost, stock, image_url, is_active, created_at, updated_at").eq("id", reward_id).maybeSingle();
+    if (error) {
+      return { content: [{ type: "text", text: `B\u0142\u0105d bazy danych: ${error.message}` }], isError: true };
+    }
+    if (!reward) {
+      return {
+        content: [{ type: "text", text: `Nagroda ${reward_id} nie zosta\u0142a znaleziona.` }],
+        isError: true,
+        structuredContent: { error: "not_found", reward_id }
+      };
+    }
+    if (!reward.is_active) {
+      return {
+        content: [{ type: "text", text: `Nagroda "${reward.name}" jest obecnie nieaktywna.` }],
+        isError: true,
+        structuredContent: { error: "inactive", reward }
+      };
+    }
+    const in_stock = reward.stock === null || (reward.stock ?? 0) > 0;
+    const { data: settings } = await supabase.from("reward_settings").select("point_value_pln, click_points, purchase_points").limit(1).maybeSingle();
+    let user_balance = null;
+    let can_afford = null;
+    if (ctx.isAuthenticated()) {
+      const { data: points } = await supabase.from("user_points").select("balance").eq("user_id", ctx.getUserId()).maybeSingle();
+      user_balance = points?.balance ?? 0;
+      can_afford = user_balance >= reward.points_cost;
+    }
+    const value_pln = settings?.point_value_pln != null ? Number(settings.point_value_pln) * reward.points_cost : null;
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Nagroda "${reward.name}" \u2013 ${reward.points_cost} pkt` + (in_stock ? "" : " (BRAK w magazynie)") + (user_balance != null ? ` \xB7 Twoje saldo: ${user_balance} pkt (${can_afford ? "wystarcza" : "brakuje"}).` : "")
+        }
+      ],
+      structuredContent: {
+        reward,
+        availability: {
+          is_active: reward.is_active,
+          in_stock,
+          stock: reward.stock,
+          unlimited: reward.stock === null
+        },
+        program: settings ?? null,
+        pricing: {
+          points_cost: reward.points_cost,
+          approx_value_pln: value_pln
+        },
+        user: ctx.isAuthenticated() ? { user_id: ctx.getUserId(), balance: user_balance, can_afford } : null
+      }
+    };
+  }
+});
+
+// src/lib/mcp/tools/my-points.ts
+import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.95.3";
+function userClient2(ctx) {
+  const env = globalThis.process?.env ?? {};
+  return createClient3(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+var my_points_default = defineTool4({
   name: "my_points",
   title: "Moje punkty",
   description: "Zwraca saldo punkt\xF3w zalogowanego u\u017Cytkownika (balance), sum\u0119 zdobytych punkt\xF3w (total_earned), aktualn\u0105 seri\u0119 dni aktywno\u015Bci oraz kilka ostatnich transakcji punktowych.",
@@ -146,7 +224,7 @@ var my_points_default = defineTool3({
     if (!ctx.isAuthenticated()) {
       return { content: [{ type: "text", text: "Wymagane zalogowanie (OAuth)." }], isError: true };
     }
-    const supabase = userClient(ctx);
+    const supabase = userClient2(ctx);
     const [pointsRes, streakRes, txRes] = await Promise.all([
       supabase.from("user_points").select("balance, total_earned, updated_at").eq("user_id", ctx.getUserId()).maybeSingle(),
       supabase.from("user_streaks").select("current_streak, longest_streak, last_activity_date").eq("user_id", ctx.getUserId()).maybeSingle(),
@@ -167,31 +245,31 @@ var my_points_default = defineTool3({
 });
 
 // src/lib/mcp/tools/my-favorites.ts
-import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.20.0";
-import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.95.3";
-import { z as z3 } from "npm:zod@^4.4.3";
-function userClient2(ctx) {
+import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { createClient as createClient4 } from "npm:@supabase/supabase-js@^2.95.3";
+import { z as z4 } from "npm:zod@^4.4.3";
+function userClient3(ctx) {
   const env = globalThis.process?.env ?? {};
-  return createClient3(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY, {
+  return createClient4(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
 }
-var my_favorites_default = defineTool4({
+var my_favorites_default = defineTool5({
   name: "my_favorites",
   title: "Moje ulubione oferty",
   description: "Zwraca list\u0119 produkt\xF3w dodanych do ulubionych przez zalogowanego u\u017Cytkownika, z sortowaniem po dacie dodania oraz stronicowaniem.",
   inputSchema: {
-    limit: z3.number().int().min(1).max(100).optional().describe("Rozmiar strony (domy\u015Blnie 25)."),
-    offset: z3.number().int().min(0).optional().describe("Przesuni\u0119cie strony (domy\u015Blnie 0)."),
-    sort: z3.enum(["newest", "oldest"]).optional().describe("Kolejno\u015B\u0107 (domy\u015Blnie 'newest').")
+    limit: z4.number().int().min(1).max(100).optional().describe("Rozmiar strony (domy\u015Blnie 25)."),
+    offset: z4.number().int().min(0).optional().describe("Przesuni\u0119cie strony (domy\u015Blnie 0)."),
+    sort: z4.enum(["newest", "oldest"]).optional().describe("Kolejno\u015B\u0107 (domy\u015Blnie 'newest').")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ limit = 25, offset = 0, sort = "newest" }, ctx) => {
     if (!ctx.isAuthenticated()) {
       return { content: [{ type: "text", text: "Wymagane zalogowanie (OAuth)." }], isError: true };
     }
-    const supabase = userClient2(ctx);
+    const supabase = userClient3(ctx);
     const { data, error, count } = await supabase.from("favorites").select("id, product_name, created_at", { count: "exact" }).eq("user_id", ctx.getUserId()).order("created_at", { ascending: sort === "oldest" }).range(offset, offset + limit - 1);
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     const total = count ?? 0;
@@ -208,32 +286,141 @@ var my_favorites_default = defineTool4({
   }
 });
 
-// src/lib/mcp/tools/my-redemptions.ts
-import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.20.0";
-import { createClient as createClient4 } from "npm:@supabase/supabase-js@^2.95.3";
-import { z as z4 } from "npm:zod@^4.4.3";
-function userClient3(ctx) {
+// src/lib/mcp/tools/add-favorite.ts
+import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { createClient as createClient5 } from "npm:@supabase/supabase-js@^2.95.3";
+import { z as z5 } from "npm:zod@^4.4.3";
+function userClient4(ctx) {
   const env = globalThis.process?.env ?? {};
-  return createClient4(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY, {
+  return createClient5(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
 }
-var my_redemptions_default = defineTool5({
+var add_favorite_default = defineTool6({
+  name: "add_favorite",
+  title: "Dodaj do ulubionych",
+  description: "Dodaje ofert\u0119 (product_name) do ulubionych zalogowanego u\u017Cytkownika. Zwraca status ('added' lub 'already_exists') oraz aktualn\u0105 list\u0119 ulubionych po operacji.",
+  inputSchema: {
+    product_name: z5.string().trim().min(1).max(500).describe("Identyfikator/nazwa produktu, kt\xF3ry ma zosta\u0107 zapisany w ulubionych.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ product_name }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Wymagane zalogowanie (OAuth)." }], isError: true };
+    }
+    const supabase = userClient4(ctx);
+    const userId = ctx.getUserId();
+    const { data: existing, error: existErr } = await supabase.from("favorites").select("id").eq("user_id", userId).eq("product_name", product_name).maybeSingle();
+    if (existErr) return { content: [{ type: "text", text: existErr.message }], isError: true };
+    let status = "already_exists";
+    if (!existing) {
+      const { error: insErr } = await supabase.from("favorites").insert({ user_id: userId, product_name });
+      if (insErr) return { content: [{ type: "text", text: insErr.message }], isError: true };
+      status = "added";
+    }
+    const { data: favorites, error: listErr, count } = await supabase.from("favorites").select("id, product_name, created_at", { count: "exact" }).eq("user_id", userId).order("created_at", { ascending: false }).range(0, 24);
+    if (listErr) return { content: [{ type: "text", text: listErr.message }], isError: true };
+    return {
+      content: [
+        {
+          type: "text",
+          text: status === "added" ? `Dodano "${product_name}" do ulubionych (\u0142\u0105cznie: ${count ?? 0}).` : `"${product_name}" by\u0142 ju\u017C w ulubionych (\u0142\u0105cznie: ${count ?? 0}).`
+        }
+      ],
+      structuredContent: {
+        status,
+        product_name,
+        total: count ?? 0,
+        favorites: favorites ?? []
+      }
+    };
+  }
+});
+
+// src/lib/mcp/tools/remove-favorite.ts
+import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { createClient as createClient6 } from "npm:@supabase/supabase-js@^2.95.3";
+import { z as z6 } from "npm:zod@^4.4.3";
+function userClient5(ctx) {
+  const env = globalThis.process?.env ?? {};
+  return createClient6(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+var remove_favorite_default = defineTool7({
+  name: "remove_favorite",
+  title: "Usu\u0144 z ulubionych",
+  description: "Usuwa ofert\u0119 z ulubionych zalogowanego u\u017Cytkownika po `favorite_id` lub `product_name`. Zwraca status ('removed' lub 'not_found') oraz aktualn\u0105 list\u0119 ulubionych po operacji.",
+  inputSchema: {
+    favorite_id: z6.string().uuid().optional().describe("UUID rekordu w tabeli favorites."),
+    product_name: z6.string().trim().min(1).max(500).optional().describe("Alternatywnie: identyfikator/nazwa produktu do usuni\u0119cia.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ favorite_id, product_name }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Wymagane zalogowanie (OAuth)." }], isError: true };
+    }
+    if (!favorite_id && !product_name) {
+      return {
+        content: [{ type: "text", text: "Podaj `favorite_id` lub `product_name`." }],
+        isError: true
+      };
+    }
+    const supabase = userClient5(ctx);
+    const userId = ctx.getUserId();
+    let del = supabase.from("favorites").delete({ count: "exact" }).eq("user_id", userId);
+    if (favorite_id) del = del.eq("id", favorite_id);
+    if (product_name) del = del.eq("product_name", product_name);
+    const { error: delErr, count: deleted } = await del.select("id");
+    if (delErr) return { content: [{ type: "text", text: delErr.message }], isError: true };
+    const status = (deleted ?? 0) > 0 ? "removed" : "not_found";
+    const { data: favorites, error: listErr, count } = await supabase.from("favorites").select("id, product_name, created_at", { count: "exact" }).eq("user_id", userId).order("created_at", { ascending: false }).range(0, 24);
+    if (listErr) return { content: [{ type: "text", text: listErr.message }], isError: true };
+    return {
+      content: [
+        {
+          type: "text",
+          text: status === "removed" ? `Usuni\u0119to z ulubionych (pozosta\u0142o: ${count ?? 0}).` : `Nie znaleziono pasuj\u0105cego wpisu w ulubionych.`
+        }
+      ],
+      structuredContent: {
+        status,
+        removed_count: deleted ?? 0,
+        total: count ?? 0,
+        favorites: favorites ?? []
+      }
+    };
+  }
+});
+
+// src/lib/mcp/tools/my-redemptions.ts
+import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { createClient as createClient7 } from "npm:@supabase/supabase-js@^2.95.3";
+import { z as z7 } from "npm:zod@^4.4.3";
+function userClient6(ctx) {
+  const env = globalThis.process?.env ?? {};
+  return createClient7(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+var my_redemptions_default = defineTool8({
   name: "my_redemptions",
   title: "Moja historia wymian nagr\xF3d",
   description: "Zwraca histori\u0119 wymian nagr\xF3d zalogowanego u\u017Cytkownika (koszt punktowy, status, data). Wspiera stronicowanie i filtr statusu.",
   inputSchema: {
-    status: z4.enum(["pending", "processing", "shipped", "completed", "cancelled"]).optional().describe("Opcjonalny filtr statusu wymiany."),
-    limit: z4.number().int().min(1).max(100).optional().describe("Rozmiar strony (domy\u015Blnie 25)."),
-    offset: z4.number().int().min(0).optional().describe("Przesuni\u0119cie strony (domy\u015Blnie 0).")
+    status: z7.enum(["pending", "processing", "shipped", "completed", "cancelled"]).optional().describe("Opcjonalny filtr statusu wymiany."),
+    limit: z7.number().int().min(1).max(100).optional().describe("Rozmiar strony (domy\u015Blnie 25)."),
+    offset: z7.number().int().min(0).optional().describe("Przesuni\u0119cie strony (domy\u015Blnie 0).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ status, limit = 25, offset = 0 }, ctx) => {
     if (!ctx.isAuthenticated()) {
       return { content: [{ type: "text", text: "Wymagane zalogowanie (OAuth)." }], isError: true };
     }
-    const supabase = userClient3(ctx);
+    const supabase = userClient6(ctx);
     let q = supabase.from("reward_redemptions").select("id, points_spent, status, created_at, reward:rewards(id, name, points_cost, image_url)", { count: "exact" }).eq("user_id", ctx.getUserId()).order("created_at", { ascending: false });
     if (status) q = q.eq("status", status);
     q = q.range(offset, offset + limit - 1);
@@ -259,8 +446,8 @@ var projectRef = "rsfieaipypagioylevbp";
 var mcp_default = defineMcp({
   name: "netszukacz-mcp",
   title: "netszukacz.pl MCP",
-  version: "0.2.0",
-  instructions: "Narz\u0119dzia netszukacz.pl \u2013 por\xF3wnywarki ofert z wynagrodzeniem (cashback) i programu lojalno\u015Bciowego. Wszystkie wywo\u0142ania wymagaj\u0105 zalogowania przez OAuth (Supabase Auth). Publiczne: `search_offers` (wyszukiwanie ofert), `list_rewards` (katalog nagr\xF3d). Prywatne (na zalogowanym u\u017Cytkowniku): `my_points`, `my_favorites`, `my_redemptions`.",
+  version: "0.3.0",
+  instructions: "Narz\u0119dzia netszukacz.pl \u2013 por\xF3wnywarki ofert z wynagrodzeniem (cashback) i programu lojalno\u015Bciowego. Publiczne: `search_offers`, `list_rewards`, `reward_details`. Prywatne (wymagaj\u0105 OAuth): `my_points`, `my_favorites`, `add_favorite`, `remove_favorite`, `my_redemptions`.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -268,8 +455,11 @@ var mcp_default = defineMcp({
   tools: [
     search_offers_default,
     list_rewards_default,
+    reward_details_default,
     my_points_default,
     my_favorites_default,
+    add_favorite_default,
+    remove_favorite_default,
     my_redemptions_default
   ]
 });
